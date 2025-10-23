@@ -5,7 +5,7 @@ module.exports = function (api) {
   return {
     presets: ['babel-preset-expo'],
     plugins: [
-      !isWeb && 'react-native-reanimated/plugin',
+    //   !isWeb && 'react-native-reanimated/plugin',
     ].filter(Boolean),
   };
 };
