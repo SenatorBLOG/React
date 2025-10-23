@@ -34,10 +34,18 @@ export function useGestures({ enabled, sensitivity, onGesture }: GestureConfig):
   const handlePan = useCallback(
     ({ nativeEvent }: PanGestureHandlerGestureEvent) => {
       if (!enabled) return;
-      if (nativeEvent.velocityX < -SWIPE_THRESHOLD) {
-        onGesture?.({ type: 'swipe-left', timestamp: Date.now() });
-      } else if (nativeEvent.velocityX > SWIPE_THRESHOLD) {
-        onGesture?.({ type: 'swipe-right', timestamp: Date.now() });
+      if (Math.abs(nativeEvent.velocityX) > Math.abs(nativeEvent.velocityY)) {
+        if (nativeEvent.velocityX < -SWIPE_THRESHOLD) {
+          onGesture?.({ type: 'swipe-left', timestamp: Date.now() });
+        } else if (nativeEvent.velocityX > SWIPE_THRESHOLD) {
+          onGesture?.({ type: 'swipe-right', timestamp: Date.now() });
+        }
+      } else {
+        if (nativeEvent.velocityY < -SWIPE_THRESHOLD) {
+          onGesture?.({ type: 'swipe-up', timestamp: Date.now() });
+        } else if (nativeEvent.velocityY > SWIPE_THRESHOLD) {
+          onGesture?.({ type: 'swipe-down', timestamp: Date.now() });
+        }
       }
     },
     [enabled, sensitivity, onGesture]

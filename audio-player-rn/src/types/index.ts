@@ -1,7 +1,19 @@
-export type ControlMode = 'buttons' | 'gestures' | 'both';
+export type ControlMode = 'buttons' | 'touch' | 'gestures' | 'both' | 'disabled';
+export type RootStackParamList = {
+  Splash: undefined;
+  Home: undefined;
+  Playlist: undefined;
+  NowPlaying: undefined;
+  FileBrowser: undefined;
+  Settings: undefined;
+  GestureTutorial: undefined;
+  About: undefined;
+};
+
+
 
 export interface GestureEvent {
-  type: 'swipe-left' | 'swipe-right' | 'double-tap' | 'long-press';
+  type: 'swipe-left' | 'swipe-right' | 'double-tap' | 'long-press' | 'tap' | 'swipe-up' | 'swipe-down';
   timestamp: number;
 }
 
@@ -12,6 +24,7 @@ export interface Track {
   duration?: number;
   artist?: string;
   artworkUri?: string;
+    album?: string;
 }
 
 export interface Playlist {

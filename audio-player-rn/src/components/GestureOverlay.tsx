@@ -1,13 +1,15 @@
+// components/GestureOverlay.tsx
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ViewStyle, StyleProp } from 'react-native';
 import { useGestures } from '../hooks/useGestures';
 import { GestureEvent, ControlMode } from '../types';
 
 interface GestureOverlayProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   mode: ControlMode;
   sensitivity: number;
   onGesture?: (gesture: GestureEvent) => void;
+  style?: StyleProp<ViewStyle>;
 }
 
 export function GestureOverlay({
@@ -15,6 +17,7 @@ export function GestureOverlay({
   mode,
   sensitivity,
   onGesture,
+  style,
 }: GestureOverlayProps) {
   const gesturesEnabled = mode === 'gestures' || mode === 'both';
 
@@ -25,14 +28,14 @@ export function GestureOverlay({
   });
 
   if (!gesturesEnabled) {
-    return <View style={styles.container}>{children}</View>;
+    return <View style={[styles.container, style]}>{children}</View>;
   }
 
   return (
     <PanGesture>
       <TapGesture>
         <LongPressGesture>
-          <View style={styles.container}>{children}</View>
+          <View style={[styles.container, style]}>{children}</View>
         </LongPressGesture>
       </TapGesture>
     </PanGesture>

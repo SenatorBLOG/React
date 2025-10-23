@@ -14,67 +14,10 @@ import { FileBrowser } from './screens/FileBrowser';
 import { Settings } from './screens/Settings';
 import { GestureTutorial } from './screens/GestureTutorial';
 import { About } from './screens/About';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from './types'; 
 
-// Define navigation stack param list
-export type RootStackParamList = {
-  Splash: undefined;
-  Home: {
-    currentTrack: Track | null;
-    isPlaying: boolean;
-    position: number;
-    duration: number;
-    controlMode: AppSettings['controlMode'];
-    gestureSensitivity: number;
-    visualFeedback: boolean;
-    onPlay: () => void;
-    onPause: () => void;
-    onNext: () => void;
-    onPrevious: () => void;
-    onSeek: (newPosition: number) => void;
-    onNavigate: (screen: keyof RootStackParamList) => void;
-  };
-  Playlist: {
-    tracks: Track[];
-    currentTrackId: string | null;
-    isPlaying: boolean;
-    onTrackSelect: (track: Track) => void;
-    onAddTracks: () => void;
-    onRemoveTrack: (trackId: string) => void;
-    onNavigate: (screen: keyof RootStackParamList) => void;
-  };
-  NowPlaying: {
-    currentTrack: Track | null;
-    isPlaying: boolean;
-    position: number;
-    duration: number;
-    controlMode: AppSettings['controlMode'];
-    gestureSensitivity: number;
-    visualFeedback: boolean;
-    shuffle: boolean;
-    repeat: 'off' | 'one' | 'all';
-    onPlay: () => void;
-    onPause: () => void;
-    onNext: () => void;
-    onPrevious: () => void;
-    onSeek: (newPosition: number) => void;
-    onSeekRelative: (seconds: number) => void;
-    onToggleShuffle: () => void;
-    onToggleRepeat: () => void;
-    onNavigate: (screen: keyof RootStackParamList) => void;
-  };
-  FileBrowser: {
-    onAddTracks: (tracks: Track[]) => void;
-    onNavigate: (screen: keyof RootStackParamList) => void;
-  };
-  Settings: {
-    settings: AppSettings;
-    onUpdateSettings: (settings: AppSettings) => void;
-    onResetData: () => void;
-    onNavigate: (screen: keyof RootStackParamList) => void;
-  };
-  GestureTutorial: { onNavigate: (screen: keyof RootStackParamList) => void };
-  About: { onNavigate: (screen: keyof RootStackParamList) => void };
-};
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -343,7 +286,9 @@ export default function App() {
       <NavigationContainer>
         <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
           <Stack.Screen name="Splash">
-            {(props) => <Splash {...props} onComplete={() => props.navigation.navigate('Home')} />}
+            {(props: NativeStackScreenProps<RootStackParamList, 'Splash'>) => (
+              <Splash {...props} onComplete={() => props.navigation.navigate('Home')} />
+            )}
           </Stack.Screen>
           <Stack.Screen name="Home">
             {(props) => (
@@ -407,7 +352,7 @@ export default function App() {
             )}
           </Stack.Screen>
           <Stack.Screen name="FileBrowser">
-            {(props) => (
+            {(props: NativeStackScreenProps<RootStackParamList, 'FileBrowser'>) => (
               <FileBrowser
                 {...props}
                 onAddTracks={handleAddTracks}
@@ -429,9 +374,7 @@ export default function App() {
           <Stack.Screen name="GestureTutorial">
             {(props) => <GestureTutorial {...props} onNavigate={props.navigation.navigate} />}
           </Stack.Screen>
-          <Stack.Screen name="About">
-            {(props) => <About {...props} onNavigate={(screen: any) => props.navigation.navigate(screen)} />}
-          </Stack.Screen>
+<Stack.Screen name="About" component={About} /> 
         </Stack.Navigator>
       </NavigationContainer>
       <Toast />

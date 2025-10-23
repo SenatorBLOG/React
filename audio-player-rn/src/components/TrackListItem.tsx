@@ -1,3 +1,4 @@
+// components/TrackListItem.tsx
 import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -33,10 +34,7 @@ export function TrackListItem({
       }}
     >
       <TouchableOpacity
-        style={[
-          styles.container,
-          isCurrent ? styles.current : styles.hover,
-        ]}
+        style={[styles.container, isCurrent ? styles.current : undefined]}
         onPress={onClick}
       >
         <View style={styles.artwork}>
@@ -48,22 +46,14 @@ export function TrackListItem({
         </View>
         <View style={styles.info}>
           <View style={styles.titleContainer}>
-            {isCurrent && isPlaying && (
-              <Ionicons name="play" size={12} color="#3b82f6" />
-            )}
+            {isCurrent && isPlaying && <Ionicons name="play" size={12} color="#3b82f6" />}
             <Text style={styles.title} numberOfLines={1}>
               {track.title}
             </Text>
           </View>
-          {track.artist && (
-            <Text style={styles.artist} numberOfLines={1}>
-              {track.artist}
-            </Text>
-          )}
+          {track.artist && <Text style={styles.artist} numberOfLines={1}>{track.artist}</Text>}
         </View>
-        <Text style={styles.duration}>
-          {formatDuration(track.duration)}
-        </Text>
+        <Text style={styles.duration}>{formatDuration(track.duration)}</Text>
       </TouchableOpacity>
     </LongPressGestureHandler>
   );
@@ -81,9 +71,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#3b82f64d',
   },
-  hover: {
-    // React Native
-  },
   artwork: {
     width: 48,
     height: 48,
@@ -100,22 +87,26 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     marginLeft: 12,
+    justifyContent: 'center',
   },
   titleContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
   },
   title: {
     color: '#fff',
     fontSize: 16,
+    marginLeft: 8,
+    flexShrink: 1,
   },
   artist: {
     color: '#9ca3af',
     fontSize: 14,
+    marginTop: 2,
   },
   duration: {
     color: '#6b7280',
     fontSize: 14,
+    marginLeft: 8,
   },
 });

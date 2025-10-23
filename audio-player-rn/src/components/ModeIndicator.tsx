@@ -12,13 +12,17 @@ export function ModeIndicator({ mode }: ModeIndicatorProps) {
     buttons: 'radio-button-on',
     gestures: 'hand-right',
     both: 'ellipse',
-  } as const;
+    touch: 'finger-print', // using finger-print icon instead of touch
+    disabled: 'close-circle',
+  };
 
   const labels: Record<ControlMode, string> = {
     buttons: 'Buttons',
     gestures: 'Gestures',
     both: 'Both',
-  } as const;
+    touch: 'Touch',
+    disabled: 'Disabled',
+  };
 
   return (
     <View style={styles.container}>

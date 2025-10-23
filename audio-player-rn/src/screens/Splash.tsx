@@ -1,52 +1,129 @@
-import { useEffect, useState } from 'react';
-import { Music } from 'lucide-react';
+// screens/Splash.tsx
+import React, { useEffect, useRef } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  Animated,
+  Easing,
+  Dimensions,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 interface SplashProps {
   onComplete: () => void;
 }
 
 export function Splash({ onComplete }: SplashProps) {
-  const [progress, setProgress] = useState(0);
+  const progress = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Simulate loading
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          setTimeout(onComplete, 300);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 100);
+    // Animate from 0 -> 100 over 1000ms (matches original +10 every 100ms)
+    Animated.timing(progress, {
+      toValue: 100,
+      duration: 1000,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false, // width uses layout, so false
+    }).start(() => {
+      // wait a bit like original setTimeout(onComplete, 300)
+      setTimeout(onComplete, 300);
+    });
+  }, [progress, onComplete]);
 
-    return () => clearInterval(interval);
-  }, [onComplete]);
+  const widthInterpolated = progress.interpolate({
+    inputRange: [0, 100],
+    outputRange: ['0%', '100%'],
+  });
+
+  const screenWidth = Dimensions.get('window').width;
+  const barWidth = Math.min(320, screenWidth - 48);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-black to-zinc-900 flex flex-col items-center justify-center p-8">
-      <div className="flex flex-col items-center gap-8 animate-in fade-in duration-500">
-        <div className="relative">
-          <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 animate-pulse" />
-          <div className="relative bg-gradient-to-br from-blue-500 to-purple-600 p-6 rounded-3xl">
-            <Music size={64} className="text-white" />
-          </div>
-        </div>
-        
-        <h1 className="text-4xl text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
-          Audio Player
-        </h1>
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        <View style={styles.logoWrap}>
+          <View style={styles.glow} />
+          <View style={styles.logoBox}>
+            <Ionicons name="musical-notes" size={56} color="#fff" />
+          </View>
+        </View>
 
-        <div className="w-64 h-1 bg-zinc-800 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-gradient-to-r from-blue-500 to-purple-600 transition-all duration-300"
-            style={{ width: `${progress}%` }}
+        <Text style={styles.title}>Audio Player</Text>
+
+        <View style={[styles.progressOuter, { width: barWidth }]}>
+          <Animated.View
+            style={[
+              styles.progressInner,
+              {
+                width: widthInterpolated,
+              },
+            ]}
           />
-        </div>
+        </View>
 
-        <p className="text-sm text-zinc-500">Loading your music...</p>
-      </div>
-    </div>
+        <Text style={styles.subtitle}>Loading your music...</Text>
+      </View>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#000' },
+  container: {
+    flex: 1,
+    padding: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoWrap: {
+    marginBottom: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  glow: {
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 100,
+    backgroundColor: '#2563eb',
+    opacity: 0.12,
+    // subtle pulse-like effect could be added later with Animated
+  },
+  logoBox: {
+    width: 120,
+    height: 120,
+    borderRadius: 28,
+    backgroundColor: '#1f2937',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 8,
+    shadowColor: '#2563eb',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  title: {
+    marginTop: 8,
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+  },
+  progressOuter: {
+    height: 8,
+    backgroundColor: '#111827',
+    borderRadius: 12,
+    overflow: 'hidden',
+    marginTop: 20,
+  },
+  progressInner: {
+    height: '100%',
+    backgroundColor: '#2563eb',
+  },
+  subtitle: {
+    marginTop: 12,
+    color: '#9ca3af',
+    fontSize: 13,
+  },
+});

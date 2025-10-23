@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { ControlButton } from '../components/ControlButton';
 import { StorageService } from '../services/storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../App';
+import { RootStackParamList } from '../types'; 
+
 
 type AboutProps = NativeStackScreenProps<RootStackParamList, 'About'>;
 
@@ -57,7 +58,7 @@ export function About({ navigation }: AboutProps) {
       <View style={styles.header}>
         <ControlButton
           icon="arrow-back"
-          onClick={() => navigation.navigate('Settings')}
+          onClick={() => navigation.goBack()}
           label="Back"
         />
         <Text style={styles.headerTitle}>About & Debug</Text>

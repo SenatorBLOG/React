@@ -1,28 +1,29 @@
-import { useState } from 'react';
-import { ArrowLeft, Plus, Trash2, Info } from 'lucide-react';
-import { Track } from '../types';
+// screens/Playlist.tsx
+import React, { useState } from 'react';
+import {
+  SafeAreaView,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TouchableOpacity,
+  Modal,
+  Pressable,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { Track, RootStackParamList } from '../types';
 import { TrackListItem } from '../components/TrackListItem';
 import { ControlButton } from '../components/ControlButton';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '../components/ui/alert-dialog';
 
-interface PlaylistProps {
+type PlaylistProps = {
   tracks: Track[];
   currentTrackId: string | null;
   isPlaying: boolean;
   onTrackSelect: (track: Track) => void;
   onAddTracks: () => void;
   onRemoveTrack: (trackId: string) => void;
-  onNavigate: (screen: string) => void;
-}
+  onNavigate: (screen: keyof RootStackParamList) => void;
+};
 
 export function Playlist({
   tracks,
@@ -34,98 +35,176 @@ export function Playlist({
   onNavigate,
 }: PlaylistProps) {
   const [trackToDelete, setTrackToDelete] = useState<Track | null>(null);
+  const [confirmVisible, setConfirmVisible] = useState(false);
 
   const handleLongPress = (track: Track) => {
     setTrackToDelete(track);
+    setConfirmVisible(true);
   };
 
   const confirmDelete = () => {
     if (trackToDelete) {
       onRemoveTrack(trackToDelete.id);
       setTrackToDelete(null);
+      setConfirmVisible(false);
     }
   };
 
+  const cancelDelete = () => {
+    setTrackToDelete(null);
+    setConfirmVisible(false);
+  };
+
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <SafeAreaView style={styles.safe}>
       {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b border-zinc-800">
-        <div className="flex items-center gap-3">
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
           <ControlButton
-            icon={ArrowLeft}
-            onClick={() => onNavigate('home')}
+            icon="arrow-back"
+            onClick={() => onNavigate('Home')}
             size="sm"
             label="Back"
           />
-          <h1 className="text-xl">Playlist</h1>
-        </div>
+          <Text style={styles.title}>Playlist</Text>
+        </View>
+
         <ControlButton
-          icon={Plus}
+          icon="add"
           onClick={onAddTracks}
           size="sm"
           label="Add tracks"
         />
-      </header>
+      </View>
 
       {/* Content */}
-      <main className="flex-1 overflow-auto">
-        {tracks.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-            <Info size={48} className="text-zinc-600 mb-4" />
-            <h2 className="text-xl mb-2">No tracks yet</h2>
-            <p className="text-zinc-400 mb-6">
-              Add some tracks to get started
-            </p>
-            <button
-              onClick={onAddTracks}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
-            >
-              <Plus size={20} />
-              <span>Add Tracks</span>
-            </button>
-          </div>
-        ) : (
-          <div className="p-4 space-y-2">
-            <div className="text-sm text-zinc-400 mb-4">
-              {tracks.length} track{tracks.length !== 1 ? 's' : ''}
-            </div>
-            {tracks.map((track) => (
-              <TrackListItem
-                key={track.id}
-                track={track}
-                isPlaying={isPlaying}
-                isCurrent={track.id === currentTrackId}
-                onClick={() => onTrackSelect(track)}
-                onLongPress={() => handleLongPress(track)}
-              />
-            ))}
-          </div>
-        )}
-      </main>
+      {tracks.length === 0 ? (
+        <View style={styles.empty}>
+          <Ionicons name="information-circle-outline" size={56} color="#4b5563" />
+          <Text style={styles.emptyTitle}>No tracks yet</Text>
+          <Text style={styles.emptySubtitle}>Add some tracks to get started</Text>
+          <TouchableOpacity style={styles.addButton} onPress={onAddTracks}>
+            <Ionicons name="add" size={18} color="#fff" />
+            <Text style={styles.addButtonText}>Add Tracks</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <FlatList
+          data={tracks}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <TrackListItem
+              track={item}
+              isPlaying={isPlaying}
+              isCurrent={item.id === currentTrackId}
+              onClick={() => onTrackSelect(item)}
+              onLongPress={() => handleLongPress(item)}
+            />
+          )}
+        />
+      )}
 
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!trackToDelete} onOpenChange={() => setTrackToDelete(null)}>
-        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete track?</AlertDialogTitle>
-            <AlertDialogDescription>
+      {/* Delete confirmation modal */}
+      <Modal
+        visible={confirmVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={cancelDelete}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Delete track?</Text>
+            <Text style={styles.modalBody}>
               Are you sure you want to remove "{trackToDelete?.title}" from the playlist?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="bg-zinc-800 hover:bg-zinc-700">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={confirmDelete}
-              className="bg-red-500 hover:bg-red-600"
-            >
-              <Trash2 size={16} className="mr-2" />
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+            </Text>
+
+            <View style={styles.modalActions}>
+              <Pressable style={[styles.modalBtn, styles.cancelBtn]} onPress={cancelDelete}>
+                <Text style={styles.cancelText}>Cancel</Text>
+              </Pressable>
+
+              <Pressable style={[styles.modalBtn, styles.deleteBtn]} onPress={confirmDelete}>
+                <Ionicons name="trash-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
+                <Text style={styles.deleteText}>Delete</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#000' },
+  header: {
+    width: '100%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#27272a',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center' },
+  title: { color: '#fff', fontSize: 18, marginLeft: 12 },
+
+  empty: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 24,
+  },
+  emptyTitle: { color: '#fff', fontSize: 20, marginTop: 12 },
+  emptySubtitle: { color: '#9ca3af', fontSize: 14, marginTop: 6, textAlign: 'center' },
+  addButton: {
+    marginTop: 18,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#2563eb',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  addButtonText: { color: '#fff', marginLeft: 8, fontSize: 14 },
+
+  listContent: {
+    padding: 12,
+    paddingBottom: 24,
+  },
+
+  /* Modal styles */
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 520,
+    backgroundColor: '#0b0b0b',
+    borderRadius: 12,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#27272a',
+  },
+  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
+  modalBody: { color: '#9ca3af', fontSize: 14, marginBottom: 16 },
+
+  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 as any },
+  modalBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  cancelBtn: { backgroundColor: '#1f2937', marginRight: 8 },
+  deleteBtn: { backgroundColor: '#ef4444' },
+  cancelText: { color: '#fff' },
+  deleteText: { color: '#fff', fontWeight: '600' },
+});

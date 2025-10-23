@@ -1,20 +1,24 @@
-import { useState } from 'react';
-import { ArrowLeft, ArrowRight, ArrowUp, ArrowDown, Hand, CheckCircle2, XCircle } from 'lucide-react';
+import React, { useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ControlButton } from '../components/ControlButton';
 import { useGestures } from '../hooks/useGestures';
 import { GestureEvent } from '../types';
-import { Button } from '../components/ui/button';
-
-interface GestureTutorialProps {
-  onNavigate: (screen: string) => void;
-}
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../types';
 
 type TutorialStep = {
   id: string;
   title: string;
   description: string;
   targetGesture: GestureEvent['type'];
-  icon: typeof ArrowLeft;
+  icon: keyof typeof Ionicons.glyphMap;
+};
+
+type GestureTutorialProps = {
+  onNavigate: (screen: keyof RootStackParamList) => void;
+  navigation: any; // in case
+  route: any;
 };
 
 const steps: TutorialStep[] = [
@@ -23,56 +27,67 @@ const steps: TutorialStep[] = [
     title: 'Swipe Left',
     description: 'Swipe from right to left to go to next track',
     targetGesture: 'swipe-left',
-    icon: ArrowLeft,
+    icon: 'arrow-back',
   },
   {
     id: 'swipe-right',
     title: 'Swipe Right',
     description: 'Swipe from left to right to go to previous track',
     targetGesture: 'swipe-right',
-    icon: ArrowRight,
+    icon: 'arrow-forward',
   },
   {
     id: 'double-tap',
     title: 'Double Tap',
     description: 'Quickly tap twice to play/pause',
     targetGesture: 'double-tap',
-    icon: Hand,
+    icon: 'hand-left-outline',
   },
   {
     id: 'swipe-up',
-    title: 'Swipe Up (Optional)',
+    title: 'Swipe Up',
     description: 'Swipe up to increase volume',
     targetGesture: 'swipe-up',
-    icon: ArrowUp,
+    icon: 'arrow-up',
   },
   {
     id: 'swipe-down',
-    title: 'Swipe Down (Optional)',
+    title: 'Swipe Down',
     description: 'Swipe down to decrease volume',
     targetGesture: 'swipe-down',
-    icon: ArrowDown,
+    icon: 'arrow-down',
   },
 ];
 
-export function GestureTutorial({ onNavigate }: GestureTutorialProps) {
+export function GestureTutorial({ navigation }: GestureTutorialProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [attempts, setAttempts] = useState(0);
   const [success, setSuccess] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const fadeAnim = useState(new Animated.Value(0))[0];
 
   const step = steps[currentStep];
 
   const handleGesture = (gesture: GestureEvent) => {
-    setAttempts(prev => prev + 1);
-    
+    setAttempts((prev) => prev + 1);
+
     if (gesture.type === step.targetGesture) {
       setSuccess(true);
       setShowFeedback(true);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
       setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
         setShowFeedback(false);
         if (currentStep < steps.length - 1) {
-          setCurrentStep(prev => prev + 1);
+          setCurrentStep((prev) => prev + 1);
           setAttempts(0);
           setSuccess(false);
         }
@@ -80,11 +95,23 @@ export function GestureTutorial({ onNavigate }: GestureTutorialProps) {
     } else {
       setSuccess(false);
       setShowFeedback(true);
-      setTimeout(() => setShowFeedback(false), 1000);
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start();
+      setTimeout(() => {
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }).start();
+        setShowFeedback(false);
+      }, 1000);
     }
   };
 
-  const { handlers } = useGestures({
+  const { PanGesture, TapGesture } = useGestures({
     enabled: true,
     sensitivity: 50,
     onGesture: handleGesture,
@@ -92,110 +119,233 @@ export function GestureTutorial({ onNavigate }: GestureTutorialProps) {
 
   const handleSkip = () => {
     if (currentStep < steps.length - 1) {
-      setCurrentStep(prev => prev + 1);
+      setCurrentStep((prev) => prev + 1);
       setAttempts(0);
       setSuccess(false);
       setShowFeedback(false);
     } else {
-      onNavigate('settings');
+      navigation.navigate('Settings');
     }
   };
 
-  const Icon = step.icon;
-
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="flex items-center gap-3 p-4 border-b border-zinc-800">
+      <View style={styles.header}>
         <ControlButton
-          icon={ArrowLeft}
-          onClick={() => onNavigate('settings')}
-          size="sm"
+          icon="arrow-back"
+          onClick={() => navigation.navigate('Settings')}
           label="Back"
         />
-        <h1 className="text-xl">Gesture Tutorial</h1>
-      </header>
+        <Text style={styles.headerTitle}>Gesture Tutorial</Text>
+      </View>
 
       {/* Content */}
-      <main className="flex-1 flex flex-col p-6">
+      <View style={styles.content}>
         {/* Progress */}
-        <div className="mb-8">
-          <div className="flex justify-between text-sm text-zinc-400 mb-2">
-            <span>Step {currentStep + 1} of {steps.length}</span>
-            <span>{Math.round((currentStep / steps.length) * 100)}%</span>
-          </div>
-          <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-blue-500 transition-all duration-300"
-              style={{ width: `${((currentStep + 1) / steps.length) * 100}%` }}
+        <View style={styles.progressContainer}>
+          <View style={styles.progressHeader}>
+            <Text style={styles.progressText}>Step {currentStep + 1} of {steps.length}</Text>
+            <Text style={styles.progressText}>{Math.round((currentStep / steps.length) * 100)}%</Text>
+          </View>
+          <View style={styles.progressBar}>
+            <View
+              style={[
+                styles.progressFill,
+                { width: `${((currentStep + 1) / steps.length) * 100}%` },
+              ]}
             />
-          </div>
-        </div>
+          </View>
+        </View>
 
         {/* Instruction */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-blue-500/10 rounded-full mb-4">
-            <Icon size={40} className="text-blue-500" />
-          </div>
-          <h2 className="text-2xl mb-2">{step.title}</h2>
-          <p className="text-zinc-400">{step.description}</p>
-        </div>
+        <View style={styles.instructionContainer}>
+          <View style={styles.iconContainer}>
+            <Ionicons name={step.icon} size={40} color="#3b82f6" />
+          </View>
+          <Text style={styles.instructionTitle}>{step.title}</Text>
+          <Text style={styles.instructionDescription}>{step.description}</Text>
+        </View>
 
         {/* Practice Area */}
-        <div
-          className="flex-1 bg-gradient-to-br from-zinc-900 to-zinc-800 rounded-2xl flex flex-col items-center justify-center p-8 mb-8 relative overflow-hidden"
-          onTouchStart={handlers.onTouchStart}
-          onTouchMove={handlers.onTouchMove}
-          onTouchEnd={handlers.onTouchEnd}
-        >
-          {/* Feedback Overlay */}
-          {showFeedback && (
-            <div className="absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
-              {success ? (
-                <div className="flex flex-col items-center gap-4 text-green-500">
-                  <CheckCircle2 size={64} />
-                  <p className="text-2xl">Perfect!</p>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center gap-4 text-red-500">
-                  <XCircle size={64} />
-                  <p className="text-2xl">Try Again</p>
-                </div>
+        <PanGesture>
+          <TapGesture>
+            <View style={styles.practiceArea}>
+              {showFeedback && (
+                <Animated.View style={[styles.feedbackOverlay, { opacity: fadeAnim }]}>
+                  {success ? (
+                    <View style={styles.feedbackContent}>
+                      <Ionicons name="checkmark-circle-outline" size={64} color="#22c55e" />
+                      <Text style={styles.feedbackText}>Perfect!</Text>
+                    </View>
+                  ) : (
+                    <View style={styles.feedbackContent}>
+                      <Ionicons name="close-circle-outline" size={64} color="#ef4444" />
+                      <Text style={styles.feedbackText}>Try Again</Text>
+                    </View>
+                  )}
+                </Animated.View>
               )}
-            </div>
-          )}
-
-          <Hand size={64} className="text-zinc-600 mb-4" />
-          <p className="text-xl text-zinc-400 mb-2">Try the gesture here</p>
-          {attempts > 0 && (
-            <p className="text-sm text-zinc-500">Attempts: {attempts}</p>
-          )}
-        </div>
+              <Ionicons name="hand-left-outline" size={64} color="#6b7280" style={styles.practiceIcon} />
+              <Text style={styles.practiceText}>Try the gesture here</Text>
+              {attempts > 0 && (
+                <Text style={styles.attemptsText}>Attempts: {attempts}</Text>
+              )}
+            </View>
+          </TapGesture>
+        </PanGesture>
 
         {/* Actions */}
-        <div className="space-y-3">
-          <Button
-            onClick={handleSkip}
-            className="w-full bg-blue-500 hover:bg-blue-600"
-          >
-            {currentStep === steps.length - 1 ? 'Finish Tutorial' : 'Skip Step'}
-          </Button>
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity style={styles.skipButton} onPress={handleSkip}>
+            <Text style={styles.skipButtonText}>
+              {currentStep === steps.length - 1 ? 'Finish Tutorial' : 'Skip Step'}
+            </Text>
+          </TouchableOpacity>
           {currentStep > 0 && (
-            <Button
-              onClick={() => {
-                setCurrentStep(prev => prev - 1);
+            <TouchableOpacity
+              style={styles.previousButton}
+              onPress={() => {
+                setCurrentStep((prev) => prev - 1);
                 setAttempts(0);
                 setSuccess(false);
                 setShowFeedback(false);
               }}
-              variant="outline"
-              className="w-full border-zinc-700 hover:bg-zinc-800"
             >
-              Previous Step
-            </Button>
+              <Text style={styles.previousButtonText}>Previous Step</Text>
+            </TouchableOpacity>
           )}
-        </div>
-      </main>
-    </div>
+        </View>
+      </View>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+  },
+  headerTitle: {
+    fontSize: 20,
+    color: '#fff',
+    marginLeft: 12,
+  },
+  content: {
+    flex: 1,
+    padding: 24,
+    gap: 24,
+  },
+  progressContainer: {
+    marginBottom: 32,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  progressText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#27272a',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3b82f6',
+  },
+  instructionContainer: {
+    alignItems: 'center',
+    marginBottom: 32,
+  },
+  iconContainer: {
+    width: 80,
+    height: 80,
+    backgroundColor: '#1e3a8a20',
+    borderRadius: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  instructionTitle: {
+    fontSize: 24,
+    color: '#fff',
+    marginBottom: 8,
+  },
+  instructionDescription: {
+    fontSize: 16,
+    color: '#6b7280',
+    textAlign: 'center',
+  },
+  practiceArea: {
+    flex: 1,
+    backgroundColor: '#18181b',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  feedbackOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#00000080',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedbackContent: {
+    alignItems: 'center',
+    gap: 16,
+  },
+  feedbackText: {
+    fontSize: 24,
+    color: '#fff',
+  },
+  practiceIcon: {
+    marginBottom: 16,
+  },
+  practiceText: {
+    fontSize: 20,
+    color: '#6b7280',
+    marginBottom: 8,
+  },
+  attemptsText: {
+    fontSize: 14,
+    color: '#6b7280',
+  },
+  actionsContainer: {
+    gap: 12,
+  },
+  skipButton: {
+    backgroundColor: '#3b82f6',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+  previousButton: {
+    borderWidth: 1,
+    borderColor: '#3f3f46',
+    padding: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  previousButtonText: {
+    fontSize: 16,
+    color: '#fff',
+  },
+});

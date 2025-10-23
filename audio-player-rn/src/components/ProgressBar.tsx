@@ -1,14 +1,16 @@
+// components/ProgressBar.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import Slider from '@react-native-community/slider';
 
 interface ProgressBarProps {
   current: number; // Current position in seconds
   total: number; // Total duration in seconds
   onSeek?: (position: number) => void;
+  style?: StyleProp<ViewStyle>;
 }
 
-export function ProgressBar({ current, total, onSeek }: ProgressBarProps) {
+export function ProgressBar({ current, total, onSeek, style }: ProgressBarProps) {
   const formatTime = (seconds: number) => {
     if (!isFinite(seconds) || seconds < 0) return '0:00';
     const mins = Math.floor(seconds / 60);
@@ -17,12 +19,12 @@ export function ProgressBar({ current, total, onSeek }: ProgressBarProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, style]}>
       <Slider
         style={styles.slider}
         minimumValue={0}
-        maximumValue={total}
-        value={current}
+        maximumValue={isFinite(total) && total > 0 ? total : 0}
+        value={isFinite(current) ? current : 0}
         onSlidingComplete={(value) => onSeek?.(value)}
         minimumTrackTintColor="#3b82f6"
         maximumTrackTintColor="#1f2937"
@@ -38,7 +40,8 @@ export function ProgressBar({ current, total, onSeek }: ProgressBarProps) {
 
 const styles = StyleSheet.create({
   container: {
-    padding: 10,
+    paddingVertical: 6,
+    width: '100%',
   },
   slider: {
     width: '100%',
@@ -47,6 +50,7 @@ const styles = StyleSheet.create({
   timeContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    marginTop: 4,
   },
   timeText: {
     color: '#9ca3af',

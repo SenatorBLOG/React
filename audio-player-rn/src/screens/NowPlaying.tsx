@@ -1,16 +1,28 @@
-import { ArrowLeft, Play, Pause, SkipBack, SkipForward, Shuffle, Repeat, RotateCcw, RotateCw, Disc } from 'lucide-react';
-import { Track, GestureEvent } from '../types';
+// screens/NowPlaying.tsx
+import React from 'react';
+import {
+  View,
+  Text,
+  Image,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  TouchableOpacity,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+
+import { Track, GestureEvent, ControlMode, RootStackParamList } from '../types';
 import { ControlButton } from '../components/ControlButton';
 import { ProgressBar } from '../components/ProgressBar';
 import { GestureOverlay } from '../components/GestureOverlay';
-import { toast } from 'sonner@2.0.3';
 
 interface NowPlayingProps {
   currentTrack: Track | null;
   isPlaying: boolean;
   position: number;
   duration: number;
-  controlMode: 'touch' | 'gestures' | 'both' | 'disabled';
+  controlMode: ControlMode; // use shared type
   gestureSensitivity: number;
   visualFeedback: boolean;
   shuffle: boolean;
@@ -23,7 +35,7 @@ interface NowPlayingProps {
   onSeekRelative: (seconds: number) => void;
   onToggleShuffle: () => void;
   onToggleRepeat: () => void;
-  onNavigate: (screen: string) => void;
+  onNavigate: (screen: keyof RootStackParamList) => void;
 }
 
 export function NowPlaying({
@@ -46,16 +58,15 @@ export function NowPlaying({
   onToggleRepeat,
   onNavigate,
 }: NowPlayingProps) {
-  
   const handleGesture = (gesture: GestureEvent) => {
     if (visualFeedback) {
-      const messages = {
+      const messages: Record<string, string> = {
         'swipe-left': 'Next track',
         'swipe-right': 'Previous track',
         'tap': 'Tap detected',
         'double-tap': 'Play/Pause',
       };
-      toast(messages[gesture.type] || 'Gesture detected');
+      Toast.show({ type: 'info', text1: messages[gesture.type] || 'Gesture detected' });
     }
 
     switch (gesture.type) {
@@ -72,129 +83,206 @@ export function NowPlaying({
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-zinc-900 to-black text-white flex flex-col">
-      {/* Header */}
-      <header className="flex items-center justify-between p-4">
-        <ControlButton
-          icon={ArrowLeft}
-          onClick={() => onNavigate('home')}
-          size="sm"
-          label="Back"
-        />
-        <h1 className="text-sm">Now Playing</h1>
-        <div className="w-8" /> {/* Spacer for alignment */}
-      </header>
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* Header */}
+        <View style={styles.header}>
+          <ControlButton
+            icon="arrow-back"
+            onClick={() => onNavigate('Home')}
+            size="sm"
+            label="Back"
+          />
+          <Text style={styles.headerTitle}>Now Playing</Text>
+          <View style={{ width: 40 }} /> {/* spacer */}
+        </View>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-8">
+        {/* Content */}
         <GestureOverlay
           mode={controlMode}
           sensitivity={gestureSensitivity}
           onGesture={handleGesture}
-          className="w-full max-w-md flex flex-col"
+          style={styles.gestureContainer}
         >
-          {/* Large Album Art */}
-          <div className="w-full aspect-square bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-3xl mb-8 flex items-center justify-center overflow-hidden shadow-2xl">
+          {/* Album art */}
+          <View style={styles.artworkWrap}>
             {currentTrack?.artworkUri ? (
-              <img
-                src={currentTrack.artworkUri}
-                alt={currentTrack.title}
-                className="w-full h-full object-cover"
-              />
+              <Image source={{ uri: currentTrack.artworkUri }} style={styles.artwork} />
             ) : (
-              <Disc size={128} className="text-zinc-700" />
+              <View style={styles.placeholder}>
+                <Ionicons name="musical-notes" size={96} color="#9ca3af" />
+              </View>
             )}
-          </div>
+          </View>
 
-          {/* Track Info */}
-          <div className="mb-8">
-            <h2 className="text-3xl mb-2">
-              {currentTrack?.title || 'No track selected'}
-            </h2>
-            {currentTrack?.artist && (
-              <p className="text-xl text-zinc-400">{currentTrack.artist}</p>
-            )}
-            {currentTrack?.album && (
-              <p className="text-sm text-zinc-500 mt-1">{currentTrack.album}</p>
-            )}
-          </div>
+          {/* Track info */}
+          <View style={styles.info}>
+            <Text style={styles.title} numberOfLines={1}>
+              {currentTrack?.title ?? 'No track selected'}
+            </Text>
+            {currentTrack?.artist ? (
+              <Text style={styles.artist} numberOfLines={1}>
+                {currentTrack.artist}
+              </Text>
+            ) : null}
+            {currentTrack?.album ? (
+              <Text style={styles.album} numberOfLines={1}>
+                {currentTrack.album}
+              </Text>
+            ) : null}
+          </View>
 
-          {/* Progress Bar */}
+          {/* Progress */}
           <ProgressBar
             current={position}
             total={duration}
             onSeek={onSeek}
-            className="mb-8"
+            style={styles.progress}
           />
 
-          {/* Main Controls */}
-          <div className="flex items-center justify-center gap-6 mb-8">
+          {/* Main controls */}
+          <View style={styles.mainControls}>
             <ControlButton
-              icon={SkipBack}
+              icon="play-skip-back-outline"
               onClick={onPrevious}
               disabled={!currentTrack}
               size="default"
               label="Previous"
             />
             <ControlButton
-              icon={isPlaying ? Pause : Play}
+              icon={isPlaying ? 'pause' : 'play'}
               onClick={isPlaying ? onPause : onPlay}
               disabled={!currentTrack}
               size="lg"
-              className="bg-white hover:bg-zinc-200 text-black"
-              variant="default"
+              variant="primary"
               label={isPlaying ? 'Pause' : 'Play'}
+              style={styles.playButton}
             />
             <ControlButton
-              icon={SkipForward}
+              icon="play-skip-forward-outline"
               onClick={onNext}
               disabled={!currentTrack}
               size="default"
               label="Next"
             />
-          </div>
+          </View>
 
-          {/* Secondary Controls */}
-          <div className="flex items-center justify-between">
+          {/* Secondary controls */}
+          <View style={styles.secondaryControls}>
             <ControlButton
-              icon={Shuffle}
+              icon="shuffle"
               onClick={onToggleShuffle}
-              className={shuffle ? 'text-blue-500' : 'text-zinc-400'}
               label="Shuffle"
+              style={shuffle ? styles.activeControl : undefined}
             />
             <ControlButton
-              icon={RotateCcw}
+              icon="refresh-outline"
               onClick={() => onSeekRelative(-15)}
               disabled={!currentTrack}
               label="Back 15s"
             />
             <ControlButton
-              icon={Repeat}
+              icon="repeat"
               onClick={onToggleRepeat}
-              className={repeat !== 'off' ? 'text-blue-500' : 'text-zinc-400'}
               label={`Repeat ${repeat}`}
+              style={repeat !== 'off' ? styles.activeControl : undefined}
             />
             <ControlButton
-              icon={RotateCw}
+              icon="refresh"
               onClick={() => onSeekRelative(15)}
               disabled={!currentTrack}
               label="Forward 15s"
             />
-          </div>
+          </View>
 
-          {/* Lyrics Placeholder */}
-          <div className="mt-8 p-4 bg-zinc-900/50 rounded-lg text-center text-sm text-zinc-500">
-            Lyrics not available
-          </div>
+          {/* Lyrics / placeholder */}
+          <View style={styles.lyrics}>
+            <Text style={styles.lyricsText}>Lyrics not available</Text>
+          </View>
         </GestureOverlay>
-      </main>
 
-      {/* Gesture Hint */}
-      {(controlMode === 'gestures' || controlMode === 'both') && (
-        <div className="p-4 text-center text-sm text-zinc-500">
-          Swipe left/right to change tracks • Double tap to play/pause
-        </div>
-      )}
-    </div>
+        {/* Hint */}
+        {(controlMode === 'gestures' || controlMode === 'both') && (
+          <View style={styles.hint}>
+            <Text style={styles.hintText}>
+              Swipe left/right to change tracks • Double tap to play/pause
+            </Text>
+          </View>
+        )}
+      </ScrollView>
+    </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#000' },
+  container: {
+    padding: 16,
+    alignItems: 'center',
+    minHeight: '100%',
+  },
+  header: {
+    width: '100%',
+    paddingVertical: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  headerTitle: { color: '#fff', fontSize: 16 },
+  gestureContainer: { width: '100%', maxWidth: 720, alignItems: 'center' },
+
+  artworkWrap: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#0b0b0b',
+    marginBottom: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  artwork: { width: '100%', height: '100%', resizeMode: 'cover' },
+  placeholder: { alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
+
+  info: { alignItems: 'center', marginBottom: 12 },
+  title: { color: '#fff', fontSize: 24, fontWeight: '600' },
+  artist: { color: '#9ca3af', fontSize: 16, marginTop: 4 },
+  album: { color: '#6b7280', fontSize: 13, marginTop: 2 },
+
+  progress: { width: '100%', marginVertical: 12 },
+
+  mainControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 18 as any, // RN doesn't support gap, kept for readability but ignored; spacing by margin in buttons if needed
+    marginVertical: 10,
+  },
+
+  playButton: { /* override for play button if needed */ },
+
+  secondaryControls: {
+    width: '100%',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginVertical: 8,
+  },
+  activeControl: {
+    // example active style
+    borderWidth: 0,
+    // you can override ControlButton style prop for active state
+  },
+
+  lyrics: {
+    marginTop: 18,
+    padding: 12,
+    width: '100%',
+    borderRadius: 12,
+    backgroundColor: 'rgba(17,17,17,0.6)',
+    alignItems: 'center',
+  },
+  lyricsText: { color: '#9ca3af' },
+
+  hint: { paddingVertical: 12 },
+  hintText: { color: '#9ca3af', fontSize: 12 },
+});

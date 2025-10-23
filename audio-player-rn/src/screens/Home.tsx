@@ -1,12 +1,24 @@
-import { Play, Pause, SkipBack, SkipForward, List, Settings, Disc } from 'lucide-react';
-import { Track, ControlMode, GestureEvent } from '../types';
+// screens/Home.tsx
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+  ViewStyle,
+  StyleProp,
+} from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import Toast from 'react-native-toast-message';
+
+import { Track, ControlMode, GestureEvent, RootStackParamList } from '../types';
 import { ControlButton } from '../components/ControlButton';
 import { ProgressBar } from '../components/ProgressBar';
 import { ModeIndicator } from '../components/ModeIndicator';
 import { GestureOverlay } from '../components/GestureOverlay';
-import { toast } from 'sonner@2.0.3';
 
-interface HomeProps {
+type HomeProps = {
   currentTrack: Track | null;
   isPlaying: boolean;
   position: number;
@@ -19,8 +31,8 @@ interface HomeProps {
   onNext: () => void;
   onPrevious: () => void;
   onSeek: (position: number) => void;
-  onNavigate: (screen: string) => void;
-}
+  onNavigate: (screen: keyof RootStackParamList) => void;
+};
 
 export function Home({
   currentTrack,
@@ -37,10 +49,9 @@ export function Home({
   onSeek,
   onNavigate,
 }: HomeProps) {
-  
   const handleGesture = (gesture: GestureEvent) => {
     if (visualFeedback) {
-      const messages = {
+      const messages: Record<string, string> = {
         'swipe-left': 'Next track',
         'swipe-right': 'Previous track',
         'swipe-up': 'Volume up',
@@ -49,7 +60,7 @@ export function Home({
         'double-tap': 'Play/Pause',
         'long-press': 'Long press detected',
       };
-      toast(messages[gesture.type] || 'Gesture detected');
+      Toast.show({ type: 'info', text1: messages[gesture.type] || 'Gesture detected' });
     }
 
     switch (gesture.type) {
@@ -65,115 +76,158 @@ export function Home({
     }
   };
 
-  const handleCoverClick = () => {
-    if (controlMode === 'touch' || controlMode === 'both') {
-      onNavigate('now-playing');
-    }
+  const handleCoverPress = () => {
+    // навигация — имена экрана берём из RootStackParamList
+    onNavigate('NowPlaying');
   };
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b border-zinc-800">
-        <h1 className="text-xl">Audio Player</h1>
-        <div className="flex items-center gap-2">
+      <View style={styles.header}>
+        <Text style={styles.title}>Audio Player</Text>
+        <View style={styles.headerRight}>
           <ModeIndicator mode={controlMode} />
           <ControlButton
-            icon={Settings}
-            onClick={() => onNavigate('settings')}
+            icon="settings-outline"
+            onClick={() => onNavigate('Settings')}
             size="sm"
             label="Settings"
           />
-        </div>
-      </header>
+        </View>
+      </View>
 
-      {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center p-8">
-        <GestureOverlay
-          mode={controlMode}
-          sensitivity={gestureSensitivity}
-          onGesture={handleGesture}
-          className="w-full max-w-md"
-        >
-          {/* Album Art */}
-          <div
-            className="w-full aspect-square bg-gradient-to-br from-zinc-800 to-zinc-900 rounded-2xl mb-8 flex items-center justify-center cursor-pointer overflow-hidden group relative"
-            onClick={handleCoverClick}
+      {/* Content */}
+      <GestureOverlay
+        mode={controlMode}
+        sensitivity={gestureSensitivity}
+        onGesture={handleGesture}
+        style={styles.gestureOverlay as StyleProp<ViewStyle>}
+      >
+        <View style={styles.center}>
+          {/* Album art */}
+          <TouchableOpacity
+            style={styles.cover}
+            activeOpacity={0.85}
+            onPress={handleCoverPress}
           >
             {currentTrack?.artworkUri ? (
-              <img
-                src={currentTrack.artworkUri}
-                alt={currentTrack.title}
-                className="w-full h-full object-cover"
-              />
+              <Image source={{ uri: currentTrack.artworkUri }} style={styles.artwork} />
             ) : (
-              <Disc size={96} className="text-zinc-700 group-hover:text-zinc-600 transition-colors" />
+              <Ionicons name="musical-notes-outline" size={96} color="#9ca3af" />
             )}
-            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
-          </div>
+          </TouchableOpacity>
 
-          {/* Track Info */}
-          <div className="text-center mb-6">
-            <h2 className="text-2xl mb-2 truncate">
-              {currentTrack?.title || 'No track selected'}
-            </h2>
-            {currentTrack?.artist && (
-              <p className="text-zinc-400 truncate">{currentTrack.artist}</p>
-            )}
-          </div>
+          {/* Track info */}
+          <View style={styles.trackInfo}>
+            <Text style={styles.trackTitle} numberOfLines={1}>
+              {currentTrack?.title ?? 'No track selected'}
+            </Text>
+            {currentTrack?.artist ? (
+              <Text style={styles.trackArtist} numberOfLines={1}>
+                {currentTrack.artist}
+              </Text>
+            ) : null}
+          </View>
 
-          {/* Progress Bar */}
-          <ProgressBar
-            current={position}
-            total={duration}
-            onSeek={onSeek}
-            className="mb-8"
-          />
+          {/* ProgressBar */}
+          <View style={styles.progress}>
+            <ProgressBar
+              current={position}
+              total={duration}
+              onSeek={onSeek}
+            />
+          </View>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4 mb-6">
+          <View style={styles.controls}>
             <ControlButton
-              icon={SkipBack}
+              icon="play-skip-back-outline"
               onClick={onPrevious}
               disabled={!currentTrack}
               label="Previous"
             />
             <ControlButton
-              icon={isPlaying ? Pause : Play}
+              icon={isPlaying ? 'pause' : 'play'}
               onClick={isPlaying ? onPause : onPlay}
               disabled={!currentTrack}
               size="lg"
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-              variant="default"
+              variant="primary"
               label={isPlaying ? 'Pause' : 'Play'}
             />
             <ControlButton
-              icon={SkipForward}
+              icon="play-skip-forward-outline"
               onClick={onNext}
               disabled={!currentTrack}
               label="Next"
             />
-          </div>
+          </View>
 
-          {/* Quick Actions */}
-          <div className="flex items-center justify-center gap-4">
-            <button
-              onClick={() => onNavigate('playlist')}
-              className="flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg transition-colors"
+          {/* Quick actions */}
+          <View style={styles.quickActions}>
+            <TouchableOpacity
+              style={styles.actionBtn}
+              onPress={() => onNavigate('Playlist')}
             >
-              <List size={20} />
-              <span>Playlist</span>
-            </button>
-          </div>
-        </GestureOverlay>
-      </main>
+              <Ionicons name="list-outline" size={20} />
+              <Text style={styles.actionText}>Playlist</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </GestureOverlay>
 
       {/* Hint */}
       {(controlMode === 'gestures' || controlMode === 'both') && (
-        <div className="p-4 text-center text-sm text-zinc-500">
-          Swipe left/right to change tracks
-        </div>
+        <View style={styles.hint}>
+          <Text style={styles.hintText}>Swipe left/right to change tracks</Text>
+        </View>
       )}
-    </div>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#000', paddingTop: 24 },
+  gestureOverlay: { flex: 1 },
+  header: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#27272a',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  title: { color: '#fff', fontSize: 18 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
+  cover: {
+    width: 260,
+    height: 260,
+    borderRadius: 16,
+    backgroundColor: '#0b0b0b',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    marginBottom: 18,
+  },
+  artwork: { width: '100%', height: '100%', resizeMode: 'cover' },
+  trackInfo: { alignItems: 'center', marginBottom: 12 },
+  trackTitle: { color: '#fff', fontSize: 20, marginBottom: 4 },
+  trackArtist: { color: '#9ca3af', fontSize: 14 },
+  progress: { width: '90%', marginVertical: 10 },
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18, marginVertical: 8 },
+  quickActions: { flexDirection: 'row', marginTop: 8 },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#111',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+    gap: 8,
+  },
+  actionText: { color: '#fff', marginLeft: 8 },
+  hint: { padding: 12, alignItems: 'center' },
+  hintText: { color: '#9ca3af', fontSize: 12 },
+});
