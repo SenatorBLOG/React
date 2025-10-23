@@ -1,103 +1,94 @@
-// LocalStorage service for persisting app data
-import { Playlist, AppSettings, AppState } from '../types';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { AppSettings, AppState, Playlist } from '../types';
 
-const STORAGE_KEYS = {
-  PLAYLISTS: '@APP:playlists',
-  SETTINGS: '@APP:settings',
-  CURRENT: '@APP:current',
-} as const;
-
-export class StorageService {
-  static async getPlaylists(): Promise<Playlist[]> {
+export const StorageService = {
+  addLog: async (message: string) => {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.PLAYLISTS);
-      return data ? JSON.parse(data) : [];
+      const logs = await AsyncStorage.getItem('logs');
+      const updatedLogs = logs ? `${logs}\n${message}` : message;
+      await AsyncStorage.setItem('logs', updatedLogs);
     } catch (error) {
-      console.error('Error loading playlists:', error);
+      console.error('Storage addLog error:', error);
+    }
+  },
+  getLogs: async (): Promise<string> => {
+    try {
+      const logs = await AsyncStorage.getItem('logs');
+      return logs || '';
+    } catch (error) {
+      console.error('Storage getLogs error:', error);
+      return '';
+    }
+  },
+  clearLogs: async () => {
+    try {
+      await AsyncStorage.removeItem('logs');
+    } catch (error) {
+      console.error('Storage clearLogs error:', error);
+    }
+  },
+  getSettings: async (): Promise<AppSettings> => {
+    try {
+      const settings = await AsyncStorage.getItem('settings');
+      return settings ? JSON.parse(settings) : { controlMode: 'both', gestureSensitivity: 50, visualFeedback: true };
+    } catch (error) {
+      console.error('Storage getSettings error:', error);
+      return { controlMode: 'both', gestureSensitivity: 50, visualFeedback: true };
+    }
+  },
+  saveSettings: async (settings: AppSettings) => {
+    try {
+      await AsyncStorage.setItem('settings', JSON.stringify(settings));
+    } catch (error) {
+      console.error('Storage saveSettings error:', error);
+    }
+  },
+  getPlaylists: async (): Promise<Playlist[]> => {
+    try {
+      const playlists = await AsyncStorage.getItem('playlists');
+      return playlists ? JSON.parse(playlists) : [];
+    } catch (error) {
+      console.error('Storage getPlaylists error:', error);
       return [];
     }
-  }
-
-  static async savePlaylists(playlists: Playlist[]): Promise<void> {
+  },
+  savePlaylists: async (playlists: Playlist[]) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.PLAYLISTS, JSON.stringify(playlists));
+      await AsyncStorage.setItem('playlists', JSON.stringify(playlists));
     } catch (error) {
-      console.error('Error saving playlists:', error);
+      console.error('Storage savePlaylists error:', error);
     }
-  }
-
-  static async getSettings(): Promise<AppSettings> {
+  },
+  getCurrentState: async (): Promise<AppState | null> => {
     try {
-      const data = localStorage.getItem(STORAGE_KEYS.SETTINGS);
-      return data ? JSON.parse(data) : {
-        controlMode: 'both',
-        gestureSensitivity: 50,
-        visualFeedback: true,
-      };
+      const state = await AsyncStorage.getItem('state');
+      return state ? JSON.parse(state) : null;
     } catch (error) {
-      console.error('Error loading settings:', error);
-      return {
-        controlMode: 'both',
-        gestureSensitivity: 50,
-        visualFeedback: true,
-      };
-    }
-  }
-
-  static async saveSettings(settings: AppSettings): Promise<void> {
-    try {
-      localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    } catch (error) {
-      console.error('Error saving settings:', error);
-    }
-  }
-
-  static async getCurrentState(): Promise<AppState | null> {
-    try {
-      const data = localStorage.getItem(STORAGE_KEYS.CURRENT);
-      return data ? JSON.parse(data) : null;
-    } catch (error) {
-      console.error('Error loading current state:', error);
+      console.error('Storage getCurrentState error:', error);
       return null;
     }
-  }
-
-  static async saveCurrentState(state: AppState): Promise<void> {
+  },
+  saveCurrentState: async (state: AppState) => {
     try {
-      localStorage.setItem(STORAGE_KEYS.CURRENT, JSON.stringify(state));
+      await AsyncStorage.setItem('state', JSON.stringify(state));
     } catch (error) {
-      console.error('Error saving current state:', error);
+      console.error('Storage saveCurrentState error:', error);
     }
-  }
-
-  static async clearAll(): Promise<void> {
+  },
+  clearAll: async () => {
     try {
-      localStorage.removeItem(STORAGE_KEYS.PLAYLISTS);
-      localStorage.removeItem(STORAGE_KEYS.SETTINGS);
-      localStorage.removeItem(STORAGE_KEYS.CURRENT);
+      await AsyncStorage.clear();
     } catch (error) {
-      console.error('Error clearing storage:', error);
+      console.error('Storage clearAll error:', error);
     }
-  }
-
-  static getLogs(): string[] {
+  },
+  getStorageStatus: async (key: string): Promise<boolean> => {
     try {
-      const logs = localStorage.getItem('@APP:logs');
-      return logs ? JSON.parse(logs) : [];
-    } catch {
-      return [];
-    }
-  }
-
-  static addLog(message: string): void {
-    try {
-      const logs = this.getLogs();
-      logs.push(`[${new Date().toISOString()}] ${message}`);
-      // Keep only last 100 logs
-      if (logs.length > 100) logs.shift();
-      localStorage.setItem('@APP:logs', JSON.stringify(logs));
+      const value = await AsyncStorage.getItem(key);
+      return value !== null;
     } catch (error) {
-      console.error('Error adding log:', error);
+      console.error(`Storage getStorageStatus error for ${key}:`, error);
+      return false;
     }
-  }
-}
+  },
+};

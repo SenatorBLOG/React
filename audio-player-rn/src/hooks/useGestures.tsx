@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useCallback, FC } from 'react';
 import {
   PanGestureHandler,
   TapGestureHandler,
@@ -12,16 +12,14 @@ import {
 } from 'react-native-gesture-handler';
 import { GestureEvent } from '../types';
 
-// Define props for gesture handler components
 interface GestureComponentProps {
   children: React.ReactNode;
 }
 
-// Define the return type of the hook
 interface GestureHandlers {
-  PanGesture: React.ComponentType<GestureComponentProps & PanGestureHandlerProps>;
-  TapGesture: React.ComponentType<GestureComponentProps & TapGestureHandlerProps>;
-  LongPressGesture: React.ComponentType<GestureComponentProps & LongPressGestureHandlerProps>;
+  PanGesture: FC<GestureComponentProps & PanGestureHandlerProps>;
+  TapGesture: FC<GestureComponentProps & TapGestureHandlerProps>;
+  LongPressGesture: FC<GestureComponentProps & LongPressGestureHandlerProps>;
 }
 
 interface GestureConfig {

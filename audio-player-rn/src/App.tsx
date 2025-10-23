@@ -1,5 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Toaster } from './components/ui/sonner';
+import React, { useState, useEffect, useCallback } from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import Toast from 'react-native-toast-message';
 import { Track, Playlist, AppSettings, AppState } from './types';
 import { getAudioPlayer, PlayerStatus } from './services/audio-player';
 import { StorageService } from './services/storage';
@@ -12,13 +15,71 @@ import { Settings } from './screens/Settings';
 import { GestureTutorial } from './screens/GestureTutorial';
 import { About } from './screens/About';
 
-type Screen = 'splash' | 'home' | 'playlist' | 'now-playing' | 'file-browser' | 'settings' | 'gesture-tutorial' | 'about';
+// Define navigation stack param list
+export type RootStackParamList = {
+  Splash: undefined;
+  Home: {
+    currentTrack: Track | null;
+    isPlaying: boolean;
+    position: number;
+    duration: number;
+    controlMode: AppSettings['controlMode'];
+    gestureSensitivity: number;
+    visualFeedback: boolean;
+    onPlay: () => void;
+    onPause: () => void;
+    onNext: () => void;
+    onPrevious: () => void;
+    onSeek: (newPosition: number) => void;
+    onNavigate: (screen: keyof RootStackParamList) => void;
+  };
+  Playlist: {
+    tracks: Track[];
+    currentTrackId: string | null;
+    isPlaying: boolean;
+    onTrackSelect: (track: Track) => void;
+    onAddTracks: () => void;
+    onRemoveTrack: (trackId: string) => void;
+    onNavigate: (screen: keyof RootStackParamList) => void;
+  };
+  NowPlaying: {
+    currentTrack: Track | null;
+    isPlaying: boolean;
+    position: number;
+    duration: number;
+    controlMode: AppSettings['controlMode'];
+    gestureSensitivity: number;
+    visualFeedback: boolean;
+    shuffle: boolean;
+    repeat: 'off' | 'one' | 'all';
+    onPlay: () => void;
+    onPause: () => void;
+    onNext: () => void;
+    onPrevious: () => void;
+    onSeek: (newPosition: number) => void;
+    onSeekRelative: (seconds: number) => void;
+    onToggleShuffle: () => void;
+    onToggleRepeat: () => void;
+    onNavigate: (screen: keyof RootStackParamList) => void;
+  };
+  FileBrowser: {
+    onAddTracks: (tracks: Track[]) => void;
+    onNavigate: (screen: keyof RootStackParamList) => void;
+  };
+  Settings: {
+    settings: AppSettings;
+    onUpdateSettings: (settings: AppSettings) => void;
+    onResetData: () => void;
+    onNavigate: (screen: keyof RootStackParamList) => void;
+  };
+  GestureTutorial: { onNavigate: (screen: keyof RootStackParamList) => void };
+  About: { onNavigate: (screen: keyof RootStackParamList) => void };
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 
 export default function App() {
-  const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [isLoading, setIsLoading] = useState(true);
-  
-  // App State
   const [tracks, setTracks] = useState<Track[]>([]);
   const [currentTrack, setCurrentTrack] = useState<Track | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -39,13 +100,10 @@ export default function App() {
     const init = async () => {
       try {
         StorageService.addLog('App initializing...');
-        
-        // Load settings
         const savedSettings = await StorageService.getSettings();
         setSettings(savedSettings);
         StorageService.addLog('Settings loaded');
 
-        // Load playlists
         const playlists = await StorageService.getPlaylists();
         if (playlists.length > 0 && playlists[0].tracks.length > 0) {
           setTracks(playlists[0].tracks);
@@ -54,10 +112,9 @@ export default function App() {
           StorageService.addLog('No tracks found');
         }
 
-        // Load current state
         const savedState = await StorageService.getCurrentState();
         if (savedState && savedState.currentTrackId) {
-          const track = playlists[0]?.tracks.find(t => t.id === savedState.currentTrackId);
+          const track = playlists[0]?.tracks.find((t) => t.id === savedState.currentTrackId);
           if (track) {
             setCurrentTrack(track);
             StorageService.addLog(`Restored current track: ${track.title}`);
@@ -77,20 +134,25 @@ export default function App() {
 
   // Setup audio player listeners
   useEffect(() => {
-    const unsubscribe = audioPlayer.onStatusUpdate((status: PlayerStatus) => {
+    // Attach listeners; audioPlayer.onStatusUpdate/onError do not return unsubscribe functions in this implementation
+    audioPlayer.onStatusUpdate((status: PlayerStatus) => {
       setIsPlaying(status.isPlaying);
       setPosition(status.position);
       setDuration(status.duration);
     });
 
-    const unsubscribeError = audioPlayer.onError((error) => {
+    audioPlayer.onError((error) => {
       console.error('Audio player error:', error);
       StorageService.addLog(`Player error: ${error.message}`);
+      Toast.show({
+        type: 'error',
+        text1: 'Audio Error',
+        text2: error.message,
+      });
     });
 
     return () => {
-      unsubscribe();
-      unsubscribeError();
+      // No-op cleanup: if the audio player service later provides unsubscribe functions, call them here.
     };
   }, [audioPlayer]);
 
@@ -130,17 +192,25 @@ export default function App() {
   }, [settings, isLoading]);
 
   // Playback functions
-  const loadAndPlayTrack = useCallback(async (track: Track) => {
-    try {
-      StorageService.addLog(`Loading track: ${track.title}`);
-      await audioPlayer.loadTrack(track);
-      setCurrentTrack(track);
-      await audioPlayer.play();
-    } catch (error) {
-      console.error('Failed to load track:', error);
-      StorageService.addLog(`Failed to load track: ${error}`);
-    }
-  }, [audioPlayer]);
+  const loadAndPlayTrack = useCallback(
+    async (track: Track) => {
+      try {
+        StorageService.addLog(`Loading track: ${track.title}`);
+        await audioPlayer.loadTrack(track);
+        setCurrentTrack(track);
+        await audioPlayer.play();
+      } catch (error) {
+        console.error('Failed to load track:', error);
+        StorageService.addLog(`Failed to load track: ${error}`);
+        Toast.show({
+          type: 'error',
+          text1: 'Load Error',
+          text2: `${error}`,
+        });
+      }
+    },
+    [audioPlayer]
+  );
 
   const handlePlay = useCallback(async () => {
     if (!currentTrack && tracks.length > 0) {
@@ -156,67 +226,90 @@ export default function App() {
 
   const handleNext = useCallback(() => {
     if (tracks.length === 0) return;
-    
+
     let nextIndex = 0;
     if (currentTrack) {
-      const currentIndex = tracks.findIndex((t: { id: any; }) => t.id === currentTrack.id);
+      const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
       if (shuffle) {
         nextIndex = Math.floor(Math.random() * tracks.length);
       } else {
         nextIndex = (currentIndex + 1) % tracks.length;
       }
     }
-    
+
     loadAndPlayTrack(tracks[nextIndex]);
   }, [tracks, currentTrack, shuffle, loadAndPlayTrack]);
 
   const handlePrevious = useCallback(() => {
     if (tracks.length === 0) return;
-    
+
     let prevIndex = 0;
     if (currentTrack) {
-      const currentIndex = tracks.findIndex((t: { id: any; }) => t.id === currentTrack.id);
+      const currentIndex = tracks.findIndex((t) => t.id === currentTrack.id);
       if (shuffle) {
         prevIndex = Math.floor(Math.random() * tracks.length);
       } else {
         prevIndex = currentIndex - 1 < 0 ? tracks.length - 1 : currentIndex - 1;
       }
     }
-    
+
     loadAndPlayTrack(tracks[prevIndex]);
   }, [tracks, currentTrack, shuffle, loadAndPlayTrack]);
 
-  const handleSeek = useCallback((newPosition: number) => {
-    audioPlayer.seek(newPosition);
-  }, [audioPlayer]);
+  const handleSeek = useCallback(
+    (newPosition: number) => {
+      audioPlayer.seek(newPosition);
+    },
+    [audioPlayer]
+  );
 
-  const handleSeekRelative = useCallback((seconds: number) => {
-    const newPosition = Math.max(0, Math.min(duration, position + seconds));
-    audioPlayer.seek(newPosition);
-  }, [audioPlayer, position, duration]);
+  const handleSeekRelative = useCallback(
+    (seconds: number) => {
+      const newPosition = Math.max(0, Math.min(duration, position + seconds));
+      audioPlayer.seek(newPosition);
+    },
+    [audioPlayer, position, duration]
+  );
 
-  const handleTrackSelect = useCallback((track: Track) => {
-    loadAndPlayTrack(track);
-  }, [loadAndPlayTrack]);
+  const handleTrackSelect = useCallback(
+    (track: Track) => {
+      loadAndPlayTrack(track);
+    },
+    [loadAndPlayTrack]
+  );
 
-  const handleAddTracks = useCallback((newTracks: Track[]) => {
-    setTracks((prev: any) => [...prev, ...newTracks]);
-    StorageService.addLog(`Added ${newTracks.length} new tracks`);
-  }, []);
+  const handleAddTracks = useCallback(
+    (newTracks: Track[]) => {
+      setTracks((prev) => [...prev, ...newTracks]);
+      StorageService.addLog(`Added ${newTracks.length} new tracks`);
+      Toast.show({
+        type: 'success',
+        text1: 'Success',
+        text2: `Added ${newTracks.length} tracks`,
+      });
+    },
+    []
+  );
 
-  const handleRemoveTrack = useCallback((trackId: string) => {
-    setTracks((prev: any[]) => prev.filter((t: { id: string; }) => t.id !== trackId));
-    if (currentTrack?.id === trackId) {
-      setCurrentTrack(null);
-      audioPlayer.pause();
-    }
-    StorageService.addLog(`Removed track: ${trackId}`);
-  }, [currentTrack, audioPlayer]);
+  const handleRemoveTrack = useCallback(
+    (trackId: string) => {
+      setTracks((prev) => prev.filter((t) => t.id !== trackId));
+      if (currentTrack?.id === trackId) {
+        setCurrentTrack(null);
+        audioPlayer.pause();
+      }
+      StorageService.addLog(`Removed track: ${trackId}`);
+    },
+    [currentTrack, audioPlayer]
+  );
 
-  const handleUpdateSettings = useCallback((newSettings: AppSettings) => {
-    setSettings(newSettings);
-    StorageService.addLog('Settings updated');
-  }, []);
+  const handleUpdateSettings = useCallback(
+    (newSettings: AppSettings) => {
+      setSettings(newSettings);
+      StorageService.addLog('Settings updated');
+    },
+    []
+  );
 
   const handleResetData = useCallback(async () => {
     await StorageService.clearAll();
@@ -230,14 +323,6 @@ export default function App() {
     audioPlayer.pause();
     StorageService.addLog('All data reset');
   }, [audioPlayer]);
-
-  const handleNavigate = useCallback((screen: string) => {
-    setCurrentScreen(screen as Screen);
-  }, []);
-
-  const handleSplashComplete = useCallback(() => {
-    setCurrentScreen('home');
-  }, []);
 
   // Auto-play next track when current ends
   useEffect(() => {
@@ -253,115 +338,103 @@ export default function App() {
     }
   }, [position, duration, isPlaying, repeat, tracks.length, handleSeek, handlePlay, handleNext, handlePause]);
 
-  // Render current screen
-  const renderScreen = () => {
-    switch (currentScreen) {
-      case 'splash':
-        return <Splash onComplete={handleSplashComplete} />;
-      
-      case 'home':
-        return (
-          <Home
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            position={position}
-            duration={duration}
-            controlMode={settings.controlMode}
-            gestureSensitivity={settings.gestureSensitivity}
-            visualFeedback={settings.visualFeedback}
-            onPlay={handlePlay}
-            onPause={handlePause}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onSeek={handleSeek}
-            onNavigate={handleNavigate}
-          />
-        );
-      
-      case 'playlist':
-        return (
-          <PlaylistScreen
-            tracks={tracks}
-            currentTrackId={currentTrack?.id || null}
-            isPlaying={isPlaying}
-            onTrackSelect={handleTrackSelect}
-            onAddTracks={() => handleNavigate('file-browser')}
-            onRemoveTrack={handleRemoveTrack}
-            onNavigate={handleNavigate}
-          />
-        );
-      
-      case 'now-playing':
-        return (
-          <NowPlaying
-            currentTrack={currentTrack}
-            isPlaying={isPlaying}
-            position={position}
-            duration={duration}
-            controlMode={settings.controlMode}
-            gestureSensitivity={settings.gestureSensitivity}
-            visualFeedback={settings.visualFeedback}
-            shuffle={shuffle}
-            repeat={repeat}
-            onPlay={handlePlay}
-            onPause={handlePause}
-            onNext={handleNext}
-            onPrevious={handlePrevious}
-            onSeek={handleSeek}
-            onSeekRelative={handleSeekRelative}
-            onToggleShuffle={() => setShuffle((prev: any) => !prev)}
-            onToggleRepeat={() => setRepeat((prev: string) => prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off')}
-            onNavigate={handleNavigate}
-          />
-        );
-      
-      case 'file-browser':
-        return (
-          <FileBrowser
-            onAddTracks={handleAddTracks}
-            onNavigate={handleNavigate}
-          />
-        );
-      
-      case 'settings':
-        return (
-          <Settings
-            settings={settings}
-            onUpdateSettings={handleUpdateSettings}
-            onResetData={handleResetData}
-            onNavigate={handleNavigate}
-          />
-        );
-      
-      case 'gesture-tutorial':
-        return <GestureTutorial onNavigate={handleNavigate} />;
-      
-      case 'about':
-        return <About onNavigate={handleNavigate} />;
-      
-      default:
-        return <Home
-          currentTrack={currentTrack}
-          isPlaying={isPlaying}
-          position={position}
-          duration={duration}
-          controlMode={settings.controlMode}
-          gestureSensitivity={settings.gestureSensitivity}
-          visualFeedback={settings.visualFeedback}
-          onPlay={handlePlay}
-          onPause={handlePause}
-          onNext={handleNext}
-          onPrevious={handlePrevious}
-          onSeek={handleSeek}
-          onNavigate={handleNavigate}
-        />;
-    }
-  };
-
   return (
-    <>
-      {renderScreen()}
-      <Toaster position="bottom-center" />
-    </>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <NavigationContainer>
+        <Stack.Navigator initialRouteName="Splash" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Splash">
+            {(props) => <Splash {...props} onComplete={() => props.navigation.navigate('Home')} />}
+          </Stack.Screen>
+          <Stack.Screen name="Home">
+            {(props) => (
+              <Home
+                {...props}
+                currentTrack={currentTrack}
+                isPlaying={isPlaying}
+                position={position}
+                duration={duration}
+                controlMode={settings.controlMode}
+                gestureSensitivity={settings.gestureSensitivity}
+                visualFeedback={settings.visualFeedback}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onNext={handleNext}
+                onPrevious={handlePrevious}
+                onSeek={handleSeek}
+                onNavigate={props.navigation.navigate}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Playlist">
+            {(props) => (
+              <PlaylistScreen
+                {...props}
+                tracks={tracks}
+                currentTrackId={currentTrack?.id || null}
+                isPlaying={isPlaying}
+                onTrackSelect={handleTrackSelect}
+                onAddTracks={() => props.navigation.navigate('FileBrowser')}
+                onRemoveTrack={handleRemoveTrack}
+                onNavigate={props.navigation.navigate}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="NowPlaying">
+            {(props) => (
+              <NowPlaying
+                {...props}
+                currentTrack={currentTrack}
+                isPlaying={isPlaying}
+                position={position}
+                duration={duration}
+                controlMode={settings.controlMode as 'gestures' | 'both' | 'touch' | 'disabled'}
+                gestureSensitivity={settings.gestureSensitivity}
+                visualFeedback={settings.visualFeedback}
+                shuffle={shuffle}
+                repeat={repeat}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onNext={handleNext}
+                onPrevious={handlePrevious}
+                onSeek={handleSeek}
+                onSeekRelative={handleSeekRelative}
+                onToggleShuffle={() => setShuffle((prev) => !prev)}
+                onToggleRepeat={() =>
+                  setRepeat((prev) => (prev === 'off' ? 'all' : prev === 'all' ? 'one' : 'off'))
+                }
+                onNavigate={props.navigation.navigate}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="FileBrowser">
+            {(props) => (
+              <FileBrowser
+                {...props}
+                onAddTracks={handleAddTracks}
+                onNavigate={props.navigation.navigate}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="Settings">
+            {(props) => (
+              <Settings
+                {...props}
+                settings={settings}
+                onUpdateSettings={handleUpdateSettings}
+                onResetData={handleResetData}
+                onNavigate={(screen) => props.navigation.navigate(screen)}
+              />
+            )}
+          </Stack.Screen>
+          <Stack.Screen name="GestureTutorial">
+            {(props) => <GestureTutorial {...props} onNavigate={props.navigation.navigate} />}
+          </Stack.Screen>
+          <Stack.Screen name="About">
+            {(props) => <About {...props} onNavigate={(screen: any) => props.navigation.navigate(screen)} />}
+          </Stack.Screen>
+        </Stack.Navigator>
+      </NavigationContainer>
+      <Toast />
+    </GestureHandlerRootView>
   );
 }

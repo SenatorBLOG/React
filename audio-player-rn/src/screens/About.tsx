@@ -1,176 +1,341 @@
-import { ArrowLeft, Music, Trash2, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { ControlButton } from '../components/ControlButton';
-import { Button } from '../components/ui/button';
-import { ScrollArea } from '../components/ui/scroll-area';
 import { StorageService } from '../services/storage';
-import { useState, useEffect } from 'react';
+import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../App';
 
-interface AboutProps {
-  onNavigate: (screen: string) => void;
-}
+type AboutProps = NativeStackScreenProps<RootStackParamList, 'About'>;
 
-export function About({ onNavigate }: AboutProps) {
+export function About({ navigation }: AboutProps) {
   const [logs, setLogs] = useState<string[]>([]);
+  const [storageStatus, setStorageStatus] = useState({
+    playlists: false,
+    settings: false,
+    state: false,
+  });
 
   useEffect(() => {
-    setLogs(StorageService.getLogs());
+    const fetchData = async () => {
+      const storedLogs = await StorageService.getLogs();
+      setLogs(storedLogs.split('\n').filter(Boolean));
+
+      const [playlists, settings, state] = await Promise.all([
+        StorageService.getStorageStatus('playlists'),
+        StorageService.getStorageStatus('settings'),
+        StorageService.getStorageStatus('state'),
+      ]);
+      setStorageStatus({ playlists, settings, state });
+    };
+    fetchData();
   }, []);
 
-  const handleClearLogs = () => {
-    localStorage.removeItem('@APP:logs');
+  const handleClearLogs = async () => {
+    await StorageService.clearLogs();
     setLogs([]);
   };
 
   const appInfo = {
-    name: 'Audio Player PWA',
+    name: 'Audio Player',
     version: '1.0.0',
     buildDate: 'October 2025',
   };
 
   const libraries = [
-    'React 18',
-    'Tailwind CSS 4.0',
-    'HTML5 Audio API',
-    'Web Storage API',
-    'Shadcn/ui Components',
-    'Lucide Icons',
+    'React Native 0.81',
+    'Expo 54',
+    'expo-av',
+    'react-native-gesture-handler',
+    'react-navigation',
+    'AsyncStorage',
   ];
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
+    <View style={styles.container}>
       {/* Header */}
-      <header className="flex items-center gap-3 p-4 border-b border-zinc-800">
+      <View style={styles.header}>
         <ControlButton
-          icon={ArrowLeft}
-          onClick={() => onNavigate('settings')}
-          size="sm"
+          icon="arrow-back"
+          onClick={() => navigation.navigate('Settings')}
           label="Back"
         />
-        <h1 className="text-xl">About & Debug</h1>
-      </header>
+        <Text style={styles.headerTitle}>About & Debug</Text>
+      </View>
 
       {/* Content */}
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 space-y-6 max-w-2xl mx-auto">
-          {/* App Info */}
-          <section className="bg-zinc-900 rounded-lg p-6">
-            <div className="flex items-center gap-4 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-2xl flex items-center justify-center">
-                <Music size={32} className="text-white" />
-              </div>
-              <div>
-                <h2 className="text-xl">{appInfo.name}</h2>
-                <p className="text-sm text-zinc-400">Version {appInfo.version}</p>
-              </div>
-            </div>
-            <div className="text-sm text-zinc-400 space-y-1">
-              <p>Build Date: {appInfo.buildDate}</p>
-              <p>Progressive Web App</p>
-            </div>
-          </section>
-
-          {/* Features */}
-          <section className="bg-zinc-900 rounded-lg p-6">
-            <h2 className="text-lg mb-4">Features</h2>
-            <ul className="space-y-2 text-sm text-zinc-400">
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>Local audio file playback</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>Touch and gesture controls</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>Playlist management</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>Offline support</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="text-blue-500">•</span>
-                <span>Customizable controls</span>
-              </li>
-            </ul>
-          </section>
-
-          {/* Technologies */}
-          <section className="bg-zinc-900 rounded-lg p-6">
-            <h2 className="text-lg mb-4">Built With</h2>
-            <div className="grid grid-cols-2 gap-2">
-              {libraries.map((lib) => (
-                <div
-                  key={lib}
-                  className="px-3 py-2 bg-zinc-800 rounded text-sm text-zinc-300"
-                >
-                  {lib}
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {/* Debug Logs */}
-          <section className="bg-zinc-900 rounded-lg p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg">Debug Logs</h2>
-              <Button
-                onClick={handleClearLogs}
-                variant="ghost"
-                size="sm"
-                className="text-zinc-400 hover:text-white"
-              >
-                <Trash2 size={16} className="mr-2" />
-                Clear
-              </Button>
-            </div>
-            <ScrollArea className="h-64 w-full rounded border border-zinc-800">
-              <div className="p-4 font-mono text-xs">
-                {logs.length === 0 ? (
-                  <p className="text-zinc-500 text-center py-8">No logs yet</p>
-                ) : (
-                  <div className="space-y-1">
-                    {logs.map((log, index) => (
-                      <div key={index} className="text-zinc-400">
-                        {log}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-          </section>
-
-          {/* Storage Info */}
-          <section className="bg-zinc-900 rounded-lg p-6">
-            <h2 className="text-lg mb-4">Storage</h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Playlists</span>
-                <span>{localStorage.getItem('@APP:playlists') ? 'Stored' : 'Empty'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Settings</span>
-                <span>{localStorage.getItem('@APP:settings') ? 'Stored' : 'Empty'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-400">Current State</span>
-                <span>{localStorage.getItem('@APP:current') ? 'Stored' : 'Empty'}</span>
-              </div>
-            </div>
-          </section>
-
-          {/* Privacy Note */}
-          <section className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-6">
-            <h2 className="text-lg mb-2 text-blue-400">Privacy Note</h2>
-            <p className="text-sm text-zinc-300">
-              All your audio files and data are stored locally in your browser. 
-              Nothing is sent to any server. Your music stays on your device.
-            </p>
-          </section>
-        </div>
-      </main>
-    </div>
+      <FlatList
+        data={[
+          {
+            key: 'appInfo',
+            render: () => (
+              <View style={styles.section}>
+                <View style={styles.appInfo}>
+                  <View style={styles.appIcon}>
+                    <Ionicons name="musical-notes" size={32} color="#fff" />
+                  </View>
+                  <View>
+                    <Text style={styles.sectionTitle}>{appInfo.name}</Text>
+                    <Text style={styles.sectionText}>Version {appInfo.version}</Text>
+                  </View>
+                </View>
+                <View style={styles.sectionTextContainer}>
+                  <Text style={styles.sectionText}>Build Date: {appInfo.buildDate}</Text>
+                  <Text style={styles.sectionText}>Mobile App</Text>
+                </View>
+              </View>
+            ),
+          },
+          {
+            key: 'features',
+            render: () => (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Features</Text>
+                <View style={styles.list}>
+                  {[
+                    'Local audio file playback',
+                    'Touch and gesture controls',
+                    'Playlist management',
+                    'Offline support',
+                    'Customizable controls',
+                  ].map((item) => (
+                    <View key={item} style={styles.listItem}>
+                      <Text style={styles.listBullet}>•</Text>
+                      <Text style={styles.listText}>{item}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ),
+          },
+          {
+            key: 'technologies',
+            render: () => (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Built With</Text>
+                <View style={styles.grid}>
+                  {libraries.map((lib) => (
+                    <View key={lib} style={styles.gridItem}>
+                      <Text style={styles.gridText}>{lib}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ),
+          },
+          {
+            key: 'debugLogs',
+            render: () => (
+              <View style={styles.section}>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>Debug Logs</Text>
+                  <TouchableOpacity style={styles.clearButton} onPress={handleClearLogs}>
+                    <Ionicons name="trash-outline" size={16} color="#d1d5db" />
+                    <Text style={styles.clearButtonText}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.logContainer}>
+                  {logs.length === 0 ? (
+                    <Text style={styles.noLogsText}>No logs yet</Text>
+                  ) : (
+                    <FlatList
+                      data={logs}
+                      renderItem={({ item }) => <Text style={styles.logText}>{item}</Text>}
+                      keyExtractor={(item, index) => index.toString()}
+                    />
+                  )}
+                </View>
+              </View>
+            ),
+          },
+          {
+            key: 'storageInfo',
+            render: () => (
+              <View style={styles.section}>
+                <Text style={styles.sectionTitle}>Storage</Text>
+                <View style={styles.storageInfo}>
+                  {[
+                    { label: 'Playlists', key: 'playlists', value: storageStatus.playlists },
+                    { label: 'Settings', key: 'settings', value: storageStatus.settings },
+                    { label: 'Current State', key: 'state', value: storageStatus.state },
+                  ].map(({ label, key, value }) => (
+                    <View key={label} style={styles.storageRow}>
+                      <Text style={styles.storageLabel}>{label}</Text>
+                      <Text style={styles.storageValue}>{value ? 'Stored' : 'Empty'}</Text>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            ),
+          },
+          {
+            key: 'privacyNote',
+            render: () => (
+              <View style={styles.privacySection}>
+                <Text style={styles.privacyTitle}>Privacy Note</Text>
+                <Text style={styles.privacyText}>
+                  All your audio files and data are stored locally on your device. Nothing is sent to any server. Your music stays private.
+                </Text>
+              </View>
+            ),
+          },
+        ]}
+        renderItem={({ item }) => item.render()}
+        keyExtractor={(item) => item.key}
+        contentContainerStyle={styles.contentContainer}
+      />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#000',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#27272a',
+  },
+  headerTitle: {
+    fontSize: 20,
+    color: '#fff',
+    marginLeft: 12,
+  },
+  contentContainer: {
+    padding: 24,
+  },
+  section: {
+    backgroundColor: '#18181b',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  appInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  appIcon: {
+    width: 64,
+    height: 64,
+    backgroundColor: '#3b82f6',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+  sectionTitle: {
+    fontSize: 18,
+    color: '#fff',
+    marginBottom: 8,
+  },
+  sectionTextContainer: {
+    marginTop: 8,
+  },
+  sectionText: {
+    fontSize: 14,
+    color: '#d1d5db',
+  },
+  list: {
+    marginTop: 8,
+  },
+  listItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  listBullet: {
+    fontSize: 14,
+    color: '#3b82f6',
+    marginRight: 8,
+  },
+  listText: {
+    fontSize: 14,
+    color: '#d1d5db',
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  gridItem: {
+    backgroundColor: '#27272a',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 4,
+  },
+  gridText: {
+    fontSize: 14,
+    color: '#d1d5db',
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  clearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  clearButtonText: {
+    fontSize: 14,
+    color: '#d1d5db',
+    marginLeft: 4,
+  },
+  logContainer: {
+    height: 256,
+    borderWidth: 1,
+    borderColor: '#27272a',
+    borderRadius: 4,
+    padding: 16,
+  },
+  noLogsText: {
+    fontSize: 12,
+    color: '#6b7280',
+    textAlign: 'center',
+    paddingVertical: 32,
+  },
+  logText: {
+    fontSize: 12,
+    color: '#d1d5db',
+    fontFamily: 'monospace',
+    marginBottom: 4,
+  },
+  storageInfo: {
+    marginTop: 8,
+  },
+  storageRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  storageLabel: {
+    fontSize: 14,
+    color: '#d1d5db',
+  },
+  storageValue: {
+    fontSize: 14,
+    color: '#d1d5db',
+  },
+  privacySection: {
+    backgroundColor: '#1e40af10',
+    borderWidth: 1,
+    borderColor: '#1e40af80',
+    borderRadius: 8,
+    padding: 16,
+  },
+  privacyTitle: {
+    fontSize: 18,
+    color: '#60a5fa',
+    marginBottom: 8,
+  },
+  privacyText: {
+    fontSize: 14,
+    color: '#d1d5db',
+  },
+});

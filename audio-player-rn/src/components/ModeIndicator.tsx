@@ -12,13 +12,13 @@ export function ModeIndicator({ mode }: ModeIndicatorProps) {
     buttons: 'radio-button-on',
     gestures: 'hand-right',
     both: 'ellipse',
-  } as const; // Ensure literal types for keys
+  } as const;
 
   const labels: Record<ControlMode, string> = {
     buttons: 'Buttons',
     gestures: 'Gestures',
     both: 'Both',
-  } as const; // Ensure literal types for keys
+  } as const;
 
   return (
     <View style={styles.container}>
