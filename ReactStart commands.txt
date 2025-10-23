@@ -1,0 +1,23 @@
+//create react app.js
+npx create-react-app react-login-tutorial
+//create expo App.tsx
+npx create-expo-app audio-player --template
+cd react-login-tutorial
+
+//create vite app.jsx
+npm create vite@latest react-login-tutorial -- --template react
+cd react-login-tutorial
+npm install
+
+//check versions of tailwind 
+npm list tailwindcss
+
+//create config tailwind
+npx tailwindcss init -p
+
+// tailwind.config.js 
+module.exports = {
+  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  theme: { extend: {} },
+  plugins: [],
+}
