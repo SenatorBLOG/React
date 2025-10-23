@@ -12,19 +12,17 @@ export function ModeIndicator({ mode }: ModeIndicatorProps) {
     buttons: 'radio-button-on',
     gestures: 'hand-right',
     both: 'ellipse',
-  };
+  } as const; // Ensure literal types for keys
 
   const labels: Record<ControlMode, string> = {
     buttons: 'Buttons',
     gestures: 'Gestures',
     both: 'Both',
-  };
-
-  const Icon = Ionicons;
+  } as const; // Ensure literal types for keys
 
   return (
     <View style={styles.container}>
-      <Icon name={icons[mode]} size={14} color="#d1d5db" />
+      <Ionicons name={icons[mode]} size={14} color="#d1d5db" />
       <Text style={styles.label}>{labels[mode]}</Text>
     </View>
   );

@@ -1,5 +1,8 @@
+import React from 'react';
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { LongPressGestureHandler, State } from 'react-native-gesture-handler';
 import { Track } from '../types';
-import { Music, Play } from 'lucide-react';
 
 interface TrackListItemProps {
   track: Track;
@@ -16,21 +19,6 @@ export function TrackListItem({
   onClick,
   onLongPress,
 }: TrackListItemProps) {
-  let longPressTimer: number | null = null;
-
-  const handleTouchStart = () => {
-    longPressTimer = window.setTimeout(() => {
-      onLongPress?.();
-    }, 500);
-  };
-
-  const handleTouchEnd = () => {
-    if (longPressTimer) {
-      clearTimeout(longPressTimer);
-      longPressTimer = null;
-    }
-  };
-
   const formatDuration = (seconds?: number) => {
     if (!seconds || !isFinite(seconds)) return '--:--';
     const mins = Math.floor(seconds / 60);
@@ -39,38 +27,95 @@ export function TrackListItem({
   };
 
   return (
-    <div
-      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-colors ${
-        isCurrent ? 'bg-blue-500/10 border border-blue-500/30' : 'hover:bg-zinc-800'
-      }`}
-      onClick={onClick}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onMouseLeave={handleTouchEnd}
+    <LongPressGestureHandler
+      onHandlerStateChange={({ nativeEvent }) => {
+        if (nativeEvent.state === State.ACTIVE) onLongPress?.();
+      }}
     >
-      <div className="w-12 h-12 bg-zinc-800 rounded flex items-center justify-center flex-shrink-0 overflow-hidden">
-        {track.artworkUri ? (
-          <img src={track.artworkUri} alt="" className="w-full h-full object-cover" />
-        ) : (
-          <Music size={20} className="text-zinc-600" />
-        )}
-      </div>
-      
-      <div className="flex-1 min-w-0">
-        <div className="flex items-center gap-2">
-          {isCurrent && isPlaying && (
-            <Play size={12} className="text-blue-500 fill-blue-500 flex-shrink-0" />
+      <TouchableOpacity
+        style={[
+          styles.container,
+          isCurrent ? styles.current : styles.hover,
+        ]}
+        onPress={onClick}
+      >
+        <View style={styles.artwork}>
+          {track.artworkUri ? (
+            <Image source={{ uri: track.artworkUri }} style={styles.artworkImage} />
+          ) : (
+            <Ionicons name="musical-notes" size={20} color="#4b5563" />
           )}
-          <p className="truncate">{track.title}</p>
-        </div>
-        {track.artist && (
-          <p className="text-sm text-zinc-400 truncate">{track.artist}</p>
-        )}
-      </div>
-
-      <div className="text-sm text-zinc-500 flex-shrink-0">
-        {formatDuration(track.duration)}
-      </div>
-    </div>
+        </View>
+        <View style={styles.info}>
+          <View style={styles.titleContainer}>
+            {isCurrent && isPlaying && (
+              <Ionicons name="play" size={12} color="#3b82f6" />
+            )}
+            <Text style={styles.title} numberOfLines={1}>
+              {track.title}
+            </Text>
+          </View>
+          {track.artist && (
+            <Text style={styles.artist} numberOfLines={1}>
+              {track.artist}
+            </Text>
+          )}
+        </View>
+        <Text style={styles.duration}>
+          {formatDuration(track.duration)}
+        </Text>
+      </TouchableOpacity>
+    </LongPressGestureHandler>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+    borderRadius: 8,
+  },
+  current: {
+    backgroundColor: '#3b82f61a',
+    borderWidth: 1,
+    borderColor: '#3b82f64d',
+  },
+  hover: {
+    // React Native
+  },
+  artwork: {
+    width: 48,
+    height: 48,
+    backgroundColor: '#1f2937',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  artworkImage: {
+    width: '100%',
+    height: '100%',
+  },
+  info: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  titleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  title: {
+    color: '#fff',
+    fontSize: 16,
+  },
+  artist: {
+    color: '#9ca3af',
+    fontSize: 14,
+  },
+  duration: {
+    color: '#6b7280',
+    fontSize: 14,
+  },
+});
