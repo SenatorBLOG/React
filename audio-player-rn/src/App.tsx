@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -36,7 +37,8 @@ export default function App() {
   const [shuffle, setShuffle] = useState(false);
   const [repeat, setRepeat] = useState<'off' | 'one' | 'all'>('off');
 
-  const audioPlayer = getAudioPlayer();
+  const audioPlayerRef = useRef(getAudioPlayer());
+  const audioPlayer = audioPlayerRef.current;
 
   // Initialize app
   useEffect(() => {
@@ -75,16 +77,14 @@ export default function App() {
     init();
   }, []);
 
-  // Setup audio player listeners
   useEffect(() => {
-    // Attach listeners; audioPlayer.onStatusUpdate/onError do not return unsubscribe functions in this implementation
-    audioPlayer.onStatusUpdate((status: PlayerStatus) => {
+    const unsubStatus = audioPlayer.onStatusUpdate((status: PlayerStatus) => {
       setIsPlaying(status.isPlaying);
       setPosition(status.position);
       setDuration(status.duration);
     });
 
-    audioPlayer.onError((error) => {
+    const unsubError = audioPlayer.onError((error) => {
       console.error('Audio player error:', error);
       StorageService.addLog(`Player error: ${error.message}`);
       Toast.show({
@@ -95,9 +95,12 @@ export default function App() {
     });
 
     return () => {
-      // No-op cleanup: if the audio player service later provides unsubscribe functions, call them here.
+      // unmount
+      unsubStatus && unsubStatus();
+      unsubError && unsubError();
     };
-  }, [audioPlayer]);
+  }, [audioPlayer]); // audioPlayer 
+
 
   // Save state on changes
   useEffect(() => {
@@ -155,17 +158,28 @@ export default function App() {
     [audioPlayer]
   );
 
-  const handlePlay = useCallback(async () => {
-    if (!currentTrack && tracks.length > 0) {
-      await loadAndPlayTrack(tracks[0]);
-    } else if (currentTrack) {
-      await audioPlayer.play();
+    const handlePlay = useCallback(async () => {
+    try {
+      if (!currentTrack && tracks.length > 0) {
+        await loadAndPlayTrack(tracks[0]);
+      } else if (currentTrack) {
+        await audioPlayer.play();
+      }
+    } catch (err) {
+      console.error('Play failed', err);
+      Toast.show({ type: 'error', text1: 'Playback failed', text2: `${err}` });
     }
   }, [currentTrack, tracks, audioPlayer, loadAndPlayTrack]);
 
-  const handlePause = useCallback(() => {
-    audioPlayer.pause();
+
+  const handlePause = useCallback(async () => {
+    try {
+      await audioPlayer.pause();
+    } catch (err) {
+      console.error('Pause failed', err);
+    }
   }, [audioPlayer]);
+
 
   const handleNext = useCallback(() => {
     if (tracks.length === 0) return;
