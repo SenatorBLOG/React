@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ControlButton } from '../components/ControlButton';
-import DocumentPicker, {
-  DocumentPickerResponse,
-} from 'react-native-document-picker';
+import * as DocumentPicker from 'expo-document-picker';
 
 import { Track } from '../types';
 import { createTestTracks } from '../utils/test-tracks';
@@ -14,6 +12,7 @@ import { RootStackParamList } from '../types';
 // helpers to extract navigation/route types
 type NavigationProp = NativeStackScreenProps<RootStackParamList, 'FileBrowser'>['navigation'];
 type RouteProp = NativeStackScreenProps<RootStackParamList, 'FileBrowser'>['route'];
+
 type FileBrowserProps = {
   navigation: NavigationProp;
   route: RouteProp;
@@ -21,23 +20,33 @@ type FileBrowserProps = {
   onNavigate: (screen: keyof RootStackParamList) => void;
 };
 
+// Expo DocumentPicker result type
+type PickedFile = {
+  uri: string;
+  name?: string;
+  size?: number;
+  mimeType?: string;
+};
+
 export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: FileBrowserProps) {
-  const [selectedFiles, setSelectedFiles] = useState<DocumentPickerResponse[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<PickedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileSelect = async () => {
-    try {
-      const files = await DocumentPicker.pick({
-        type: [DocumentPicker.types.audio],
-        allowMultiSelection: true,
-      });
-      setSelectedFiles(files);
-    } catch (error) {
-      if (!DocumentPicker.isCancel(error)) {
-        console.error('File picker error:', error);
-      }
+  try {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: 'audio/*',
+      multiple: true, // : multiple=true  SDK >= 48
+    });
+
+    if (!result.canceled) {
+      console.log(result.assets[0]); // { name, uri, size }
+      setSelectedFiles(result.assets); // handle multiple files
     }
-  };
+  } catch (error) {
+    console.error('File picker error:', error);
+  }
+};
 
   const handleAddSelected = async () => {
     if (selectedFiles.length === 0) return;
