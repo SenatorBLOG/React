@@ -1,7 +1,7 @@
 {
   "name": "audio-player-rn",
   "version": "1.0.0",
-  "main": "src/main.tsx",
+  "main": "src/AppEntry.js",
   "scripts": {
     "start": "expo start",
     "android": "expo start --android",

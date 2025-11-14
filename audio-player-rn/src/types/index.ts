@@ -1,3 +1,4 @@
+//src/types/index.ts
 export type ControlMode = 'buttons' | 'touch' | 'gestures' | 'both' | 'disabled';
 export type RootStackParamList = {
   Splash: undefined;

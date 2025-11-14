@@ -1,87 +1,73 @@
-import { useCallback, FC } from 'react';
-import {
-  PanGestureHandler,
-  TapGestureHandler,
-  LongPressGestureHandler,
-  PanGestureHandlerGestureEvent,
-  TapGestureHandlerGestureEvent,
-  LongPressGestureHandlerGestureEvent,
-  PanGestureHandlerProps,
-  TapGestureHandlerProps,
-  LongPressGestureHandlerProps,
-} from 'react-native-gesture-handler';
+// hooks/useGestures.ts
+import React, { useMemo, FC } from 'react';
+import { View, ViewStyle, StyleProp } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { GestureEvent } from '../types';
 
 interface GestureComponentProps {
   children: React.ReactNode;
-}
-
-interface GestureHandlers {
-  PanGesture: FC<GestureComponentProps & PanGestureHandlerProps>;
-  TapGesture: FC<GestureComponentProps & TapGestureHandlerProps>;
-  LongPressGesture: FC<GestureComponentProps & LongPressGestureHandlerProps>;
+  style?: StyleProp<ViewStyle>;
 }
 
 interface GestureConfig {
-  enabled: boolean;
-  sensitivity: number; // 0-100
+  enabled?: boolean;
+  sensitivity?: number; // 0-100
   onGesture?: (gesture: GestureEvent) => void;
 }
 
-export function useGestures({ enabled, sensitivity, onGesture }: GestureConfig): GestureHandlers {
-  const SWIPE_THRESHOLD = 50 - sensitivity * 0.3; // Higher sensitivity = lower threshold
+export function useGestures({
+  enabled = true,
+  sensitivity = 50,
+  onGesture,
+}: GestureConfig) {
+  const swipeThreshold = Math.max(30, 50 * (1 - sensitivity / 100));
+  const minVelocity = 200;
 
-  const handlePan = useCallback(
-    ({ nativeEvent }: PanGestureHandlerGestureEvent) => {
-      if (!enabled) return;
-      if (Math.abs(nativeEvent.velocityX) > Math.abs(nativeEvent.velocityY)) {
-        if (nativeEvent.velocityX < -SWIPE_THRESHOLD) {
-          onGesture?.({ type: 'swipe-left', timestamp: Date.now() });
-        } else if (nativeEvent.velocityX > SWIPE_THRESHOLD) {
-          onGesture?.({ type: 'swipe-right', timestamp: Date.now() });
+  const gesture = useMemo(() => {
+    if (!enabled) return null;
+
+    const pan = Gesture.Pan()
+      .minDistance(swipeThreshold)
+      .minVelocity(minVelocity)
+      .onEnd((e: any) => {
+        const { translationX = 0, translationY = 0, velocityX = 0, velocityY = 0 } = e;
+        let type: GestureEvent['type'] | null = null;
+
+        // Prefer translation magnitude, then velocity as confirmation
+        if (Math.abs(translationX) > Math.abs(translationY)) {
+          if (Math.abs(translationX) >= swipeThreshold && Math.abs(velocityX) >= minVelocity) {
+            type = translationX > 0 ? 'swipe-right' : 'swipe-left';
+          }
+        } else {
+          if (Math.abs(translationY) >= swipeThreshold && Math.abs(velocityY) >= minVelocity) {
+            type = translationY > 0 ? 'swipe-down' : 'swipe-up';
+          }
         }
-      } else {
-        if (nativeEvent.velocityY < -SWIPE_THRESHOLD) {
-          onGesture?.({ type: 'swipe-up', timestamp: Date.now() });
-        } else if (nativeEvent.velocityY > SWIPE_THRESHOLD) {
-          onGesture?.({ type: 'swipe-down', timestamp: Date.now() });
-        }
-      }
-    },
-    [enabled, sensitivity, onGesture]
-  );
 
-  const handleDoubleTap = useCallback(
-    ({ nativeEvent }: TapGestureHandlerGestureEvent) => {
-      if (!enabled || nativeEvent.state !== 4) return; // State.ACTIVE
-      onGesture?.({ type: 'double-tap', timestamp: Date.now() });
-    },
-    [enabled, onGesture]
-  );
+        if (type) onGesture?.({ type, timestamp: Date.now() });
+      });
 
-  const handleLongPress = useCallback(
-    ({ nativeEvent }: LongPressGestureHandlerGestureEvent) => {
-      if (!enabled || nativeEvent.state !== 4) return; // State.ACTIVE
-      onGesture?.({ type: 'long-press', timestamp: Date.now() });
-    },
-    [enabled, onGesture]
-  );
+    const doubleTap = Gesture.Tap()
+      .numberOfTaps(2)
+      .maxDelay(250)
+      .onEnd(() => onGesture?.({ type: 'double-tap', timestamp: Date.now() }));
 
-  return {
-    PanGesture: ({ children, ...props }) => (
-      <PanGestureHandler onGestureEvent={handlePan} enabled={enabled} {...props}>
-        {children}
-      </PanGestureHandler>
-    ),
-    TapGesture: ({ children, ...props }) => (
-      <TapGestureHandler numberOfTaps={2} onHandlerStateChange={handleDoubleTap} enabled={enabled} {...props}>
-        {children}
-      </TapGestureHandler>
-    ),
-    LongPressGesture: ({ children, ...props }) => (
-      <LongPressGestureHandler onHandlerStateChange={handleLongPress} enabled={enabled} {...props}>
-        {children}
-      </LongPressGestureHandler>
-    ),
-  };
+    const longPress = Gesture.LongPress()
+      .minDuration(500)
+      .onEnd(() => onGesture?.({ type: 'long-press', timestamp: Date.now() }));
+
+    // allow pan simultaneous detection, but doubleTap and longPress exclusive between them
+    return Gesture.Simultaneous(pan, Gesture.Exclusive(doubleTap, longPress));
+  }, [enabled, swipeThreshold, minVelocity, onGesture]);
+
+  const GestureWrapper: FC<GestureComponentProps> = ({ children, style }) =>
+    gesture ? (
+      <GestureDetector gesture={gesture}>
+        <View style={style}>{children}</View>
+      </GestureDetector>
+    ) : (
+      <View style={style}>{children}</View>
+    );
+
+  return { GestureWrapper };
 }

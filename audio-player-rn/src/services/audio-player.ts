@@ -1,181 +1,149 @@
 // src/services/audio-player.ts
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS, InterruptionModeAndroid } from 'expo-av';
 import { Track } from '../types';
 
 export interface PlayerStatus {
   isPlaying: boolean;
-  position: number; // seconds
-  duration: number; // seconds
+  position: number;
+  duration: number;
 }
 
 type StatusCallback = (status: PlayerStatus) => void;
-type ErrorCallback = (err: Error) => void;
+type ErrorCallback = (error: Error) => void;
 
-export const getAudioPlayer = () => {
-  let sound: Audio.Sound | null = null;
-  const statusListeners = new Set<StatusCallback>();
-  const errorListeners = new Set<ErrorCallback>();
-  let attached = false; // whether we've attached proxy listener to current sound
+class AudioPlayer {
+  private sound: Audio.Sound | null = null;
+  private statusListeners: StatusCallback[] = [];
+  private errorListeners: ErrorCallback[] = [];
+  private isLoaded = false;
 
-  const proxyStatusHandler = (status: any) => {
-    if (!status) return;
-    if (!status.isLoaded) return;
-    const s: PlayerStatus = {
-      isPlaying: !!status.isPlaying,
-      position: status.positionMillis ? status.positionMillis / 1000 : 0,
+  constructor() {
+    this.initAudioMode();
+  }
+
+  private async initAudioMode() {
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        interruptionModeIOS: InterruptionModeIOS.DoNotMix,
+        interruptionModeAndroid: InterruptionModeAndroid.DoNotMix,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log('Audio mode set successfully');
+    } catch (error: any) {
+      console.error('Failed to set audio mode', error);
+      this.notifyError(new Error(`Failed to set audio mode: ${error.message}`));
+    }
+  }
+
+  private notifyStatus = (status: PlayerStatus) => {
+    this.statusListeners.forEach(cb => cb(status));
+  };
+
+  private notifyError = (error: Error) => {
+    this.errorListeners.forEach(cb => cb(error));
+  };
+
+  async loadTrack(track: Track): Promise<void> {
+    try {
+      if (this.sound) {
+        await this.sound.unloadAsync();
+        this.sound = null;
+        this.isLoaded = false;
+      }
+
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: track.uri },
+        { shouldPlay: false },
+        this.onPlaybackStatusUpdate
+      );
+
+      this.sound = sound;
+      this.isLoaded = true;
+    } catch (error: any) {
+      this.isLoaded = false;
+      console.error('Error loading track:', error);
+      this.notifyError(error);
+      throw error;
+    }
+  }
+
+  private onPlaybackStatusUpdate = (status: any) => {
+    if (!status.isLoaded) {
+      this.isLoaded = false;
+      if (status.error) {
+        console.error(`Playback Error: ${status.error}`);
+        this.notifyError(new Error(status.error));
+      }
+      return;
+    }
+
+    this.isLoaded = true;
+    this.notifyStatus({
+      isPlaying: status.isPlaying,
+      position: status.positionMillis / 1000,
       duration: status.durationMillis ? status.durationMillis / 1000 : 0,
+    });
+  };
+
+  async play(): Promise<void> {
+    if (!this.sound || !this.isLoaded) {
+      const error = new Error('Sound not loaded');
+      this.notifyError(error);
+      throw error;
+    }
+    try {
+      await this.sound.playAsync();
+    } catch (error: any) {
+      console.error('Error playing sound:', error);
+      this.notifyError(error);
+      throw error;
+    }
+  }
+
+  async pause(): Promise<void> {
+    if (!this.sound || !this.isLoaded) return;
+    try {
+      await this.sound.pauseAsync();
+    } catch (error: any) {
+      console.error('Error pausing sound:', error);
+      this.notifyError(error);
+    }
+  }
+
+  async seek(position: number): Promise<void> {
+    if (!this.sound || !this.isLoaded) return;
+    try {
+      await this.sound.setPositionAsync(position * 1000);
+    } catch (error: any) {
+      console.error('Error seeking sound:', error);
+      this.notifyError(error);
+    }
+  }
+
+  onStatusUpdate(callback: StatusCallback): () => void {
+    this.statusListeners.push(callback);
+    return () => {
+      this.statusListeners = this.statusListeners.filter(cb => cb !== callback);
     };
-    statusListeners.forEach((cb) => {
-      try { cb(s); } catch (e) { /* ignore listener errors */ }
-    });
-  };
+  }
 
-  const attachProxy = () => {
-    if (!sound || attached) return;
-    sound.setOnPlaybackStatusUpdate(proxyStatusHandler);
-    attached = true;
-  };
+  onError(callback: ErrorCallback): () => void {
+    this.errorListeners.push(callback);
+    return () => {
+      this.errorListeners = this.errorListeners.filter(cb => cb !== callback);
+    };
+  }
+}
 
-  const detachProxy = () => {
-    if (!sound || !attached) return;
-    try { sound.setOnPlaybackStatusUpdate(null); } catch {}
-    attached = false;
-  };
+let playerInstance: AudioPlayer | null = null;
 
-  const notifyError = (err: Error) => {
-    errorListeners.forEach((cb) => {
-      try { cb(err); } catch (e) {}
-    });
-  };
-
-  return {
-    // Load a track and ensure it's fully loaded before returning
-    loadTrack: async (track: Track): Promise<void> => {
-      try {
-        // unload previous sound if any
-        if (sound) {
-          try {
-            detachProxy();
-            await sound.unloadAsync();
-          } catch (e) { /* ignore unload errors */ }
-          sound = null;
-        }
-
-        // create + load
-        const { sound: createdSound, status } = await Audio.Sound.createAsync(
-          { uri: track.uri },
-          { shouldPlay: false }
-        );
-
-        sound = createdSound;
-        attachProxy();
-
-        // verify loaded (createAsync normally returns loaded status, but double-check)
-        const st = await sound.getStatusAsync();
-        if (!st.isLoaded) {
-          const err = new Error('Sound failed to load');
-          notifyError(err);
-          throw err;
-        }
-      } catch (err: any) {
-        const e = new Error(`Failed to load track: ${err?.message ?? err}`);
-        notifyError(e);
-        throw e;
-      }
-    },
-
-    // Play (safely checks loaded state)
-    play: async (): Promise<void> => {
-      try {
-        if (!sound) throw new Error('Sound not loaded');
-        const status = await sound.getStatusAsync();
-        if (!status.isLoaded) throw new Error('Sound not loaded');
-        if (status.isPlaying) return;
-        await sound.playAsync();
-      } catch (err: any) {
-        const e = new Error(`Playback error: ${err?.message ?? err}`);
-        notifyError(e);
-        throw e;
-      }
-    },
-
-    pause: async (): Promise<void> => {
-      try {
-        if (!sound) throw new Error('Sound not loaded');
-        const status = await sound.getStatusAsync();
-        if (!status.isLoaded) throw new Error('Sound not loaded');
-        if (!status.isPlaying) return;
-        await sound.pauseAsync();
-      } catch (err: any) {
-        const e = new Error(`Pause error: ${err?.message ?? err}`);
-        notifyError(e);
-        throw e;
-      }
-    },
-
-    seek: async (positionSec: number): Promise<void> => {
-      try {
-        if (!sound) throw new Error('Sound not loaded');
-        const status = await sound.getStatusAsync();
-        if (!status.isLoaded) throw new Error('Sound not loaded');
-        await sound.setPositionAsync(Math.round(positionSec * 1000));
-      } catch (err: any) {
-        const e = new Error(`Seek error: ${err?.message ?? err}`);
-        notifyError(e);
-        throw e;
-      }
-    },
-
-    onStatusUpdate: (cb: StatusCallback): (() => void) => {
-      statusListeners.add(cb);
-      // if sound already exists, immediately emit current status
-      (async () => {
-        if (sound) {
-          try {
-            const st = await sound.getStatusAsync();
-            if (st.isLoaded) {
-              cb({
-                isPlaying: !!st.isPlaying,
-                position: st.positionMillis ? st.positionMillis / 1000 : 0,
-                duration: st.durationMillis ? st.durationMillis / 1000 : 0,
-              });
-            }
-          } catch (e) { /* ignore */ }
-        }
-      })();
-      return () => statusListeners.delete(cb);
-    },
-
-    onError: (cb: ErrorCallback): (() => void) => {
-      errorListeners.add(cb);
-      return () => errorListeners.delete(cb);
-    },
-
-    getCurrentStatus: async (): Promise<PlayerStatus | null> => {
-      if (!sound) return null;
-      try {
-        const st = await sound.getStatusAsync();
-        if (!st.isLoaded) return null;
-        return {
-          isPlaying: !!st.isPlaying,
-          position: st.positionMillis ? st.positionMillis / 1000 : 0,
-          duration: st.durationMillis ? st.durationMillis / 1000 : 0,
-        };
-      } catch {
-        return null;
-      }
-    },
-
-    cleanup: async (): Promise<void> => {
-      try {
-        if (sound) {
-          detachProxy();
-          await sound.unloadAsync();
-          sound = null;
-        }
-      } catch (e) { /* ignore */ }
-      statusListeners.clear();
-      errorListeners.clear();
-    },
-  };
+export const getAudioPlayer = (): AudioPlayer => {
+  if (!playerInstance) {
+    playerInstance = new AudioPlayer();
+  }
+  return playerInstance;
 };

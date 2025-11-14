@@ -4,7 +4,6 @@ import {
   View,
   Text,
   Image,
-  StyleSheet,
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
@@ -16,13 +15,14 @@ import { Track, GestureEvent, ControlMode, RootStackParamList } from '../types';
 import { ControlButton } from '../components/ControlButton';
 import { ProgressBar } from '../components/ProgressBar';
 import { GestureOverlay } from '../components/GestureOverlay';
+import { nowPlayingStyles as styles, theme } from '../styles/globalStyles';
 
 interface NowPlayingProps {
   currentTrack: Track | null;
   isPlaying: boolean;
   position: number;
   duration: number;
-  controlMode: ControlMode; // use shared type
+  controlMode: ControlMode; 
   gestureSensitivity: number;
   visualFeedback: boolean;
   shuffle: boolean;
@@ -110,7 +110,7 @@ export function NowPlaying({
               <Image source={{ uri: currentTrack.artworkUri }} style={styles.artwork} />
             ) : (
               <View style={styles.placeholder}>
-                <Ionicons name="musical-notes" size={96} color="#9ca3af" />
+                <Ionicons name="musical-notes" size={96} color={theme.colors.muted} />
               </View>
             )}
           </View>
@@ -213,76 +213,3 @@ export function NowPlaying({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#000' },
-  container: {
-    padding: 16,
-    alignItems: 'center',
-    minHeight: '100%',
-  },
-  header: {
-    width: '100%',
-    paddingVertical: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerTitle: { color: '#fff', fontSize: 16 },
-  gestureContainer: { width: '100%', maxWidth: 720, alignItems: 'center' },
-
-  artworkWrap: {
-    width: '100%',
-    aspectRatio: 1,
-    borderRadius: 24,
-    overflow: 'hidden',
-    backgroundColor: '#0b0b0b',
-    marginBottom: 18,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  artwork: { width: '100%', height: '100%', resizeMode: 'cover' },
-  placeholder: { alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%' },
-
-  info: { alignItems: 'center', marginBottom: 12 },
-  title: { color: '#fff', fontSize: 24, fontWeight: '600' },
-  artist: { color: '#9ca3af', fontSize: 16, marginTop: 4 },
-  album: { color: '#6b7280', fontSize: 13, marginTop: 2 },
-
-  progress: { width: '100%', marginVertical: 12 },
-
-  mainControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 18 as any, // RN doesn't support gap, kept for readability but ignored; spacing by margin in buttons if needed
-    marginVertical: 10,
-  },
-
-  playButton: { /* override for play button if needed */ },
-
-  secondaryControls: {
-    width: '100%',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginVertical: 8,
-  },
-  activeControl: {
-    // example active style
-    borderWidth: 0,
-    // you can override ControlButton style prop for active state
-  },
-
-  lyrics: {
-    marginTop: 18,
-    padding: 12,
-    width: '100%',
-    borderRadius: 12,
-    backgroundColor: 'rgba(17,17,17,0.6)',
-    alignItems: 'center',
-  },
-  lyricsText: { color: '#9ca3af' },
-
-  hint: { paddingVertical: 12 },
-  hintText: { color: '#9ca3af', fontSize: 12 },
-});

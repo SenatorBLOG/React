@@ -7,15 +7,17 @@ import {
   TouchableOpacity,
   Modal,
   Pressable,
-  StyleSheet,
-  Switch as RNSwitch,
   ScrollView,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import { Ionicons } from '@expo/vector-icons';
+import { Switch } from 'react-native'; // Use native Switch, not RNSwitch alias
 
 import { ControlMode, AppSettings, RootStackParamList } from '../types';
 import { ControlButton } from '../components/ControlButton';
+
+// Import styles
+import { settingsStyles as styles, theme } from '../styles/globalStyles';
 
 type SettingsProps = {
   settings: AppSettings;
@@ -27,11 +29,11 @@ type SettingsProps = {
 export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }: SettingsProps) {
   const [showResetDialog, setShowResetDialog] = useState(false);
 
-  const controlModes: { value: ControlMode; label: string; icon: string; description: string }[] = [
-    { value: 'touch' as ControlMode, label: 'Touch Only', icon: 'hand-left-outline', description: 'Use buttons and taps' },
-    { value: 'gestures' as ControlMode, label: 'Gestures Only', icon: 'move-outline', description: 'Swipe and gesture controls' },
-    { value: 'both' as ControlMode, label: 'Both', icon: 'layers-outline', description: 'Touch and gestures' },
-    { value: 'disabled' as ControlMode, label: 'Disabled', icon: 'ban-outline', description: 'No controls' },
+  const controlModes: { value: ControlMode; label: string; icon: keyof typeof Ionicons.glyphMap; description: string }[] = [
+    { value: 'touch', label: 'Touch Only', icon: 'hand-left-outline', description: 'Use buttons and taps' },
+    { value: 'gestures', label: 'Gestures Only', icon: 'hand-right-outline', description: 'Swipe and gesture controls' },
+    { value: 'both', label: 'Both', icon: 'layers-outline', description: 'Touch and gestures' },
+    { value: 'disabled', label: 'Disabled', icon: 'ban-outline', description: 'No controls' },
   ];
 
   const handleModeChange = (mode: ControlMode) => {
@@ -83,7 +85,7 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
                 ]}
               >
                 <Ionicons
-                  name={m.icon as any}
+                  name={m.icon}
                   size={22}
                   color={settings.controlMode === m.value ? '#2563eb' : '#9ca3af'}
                 />
@@ -123,8 +125,8 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
               <Text style={styles.sectionTitle}>Visual Feedback</Text>
               <Text style={styles.helperText}>Show toast messages when gestures are detected</Text>
             </View>
-            <RNSwitch
-              value={!!settings.visualFeedback}
+            <Switch
+              value={settings.visualFeedback}
               onValueChange={(v) => handleFeedbackChange(v)}
               trackColor={{ false: '#374151', true: '#60a5fa' }}
               thumbColor={settings.visualFeedback ? '#fff' : '#fff'}
@@ -135,9 +137,9 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
         {/* Quick Actions */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Quick Actions</Text>
-          <View style={{ marginTop: 8 }}>
+          <View>
             <TouchableOpacity
-              style={[styles.actionBtn]}
+              style={styles.actionBtn}
               onPress={() => onNavigate('GestureTutorial')}
             >
               <Ionicons name="help-circle-outline" size={18} color="#9ca3af" />
@@ -145,7 +147,7 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.actionBtn]}
+              style={styles.actionBtn}
               onPress={() => onNavigate('About')}
             >
               <Ionicons name="information-circle-outline" size={18} color="#9ca3af" />
@@ -159,11 +161,11 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
           <Text style={styles.sectionTitle}>Data Management</Text>
           <TouchableOpacity
             onPress={() => setShowResetDialog(true)}
-            style={[styles.resetBtn]}
+            style={styles.resetBtn}
           >
             <Text style={styles.resetBtnText}>Reset All Data</Text>
           </TouchableOpacity>
-          <Text style={[styles.helperText, { textAlign: 'center', marginTop: 8 }]}>
+          <Text style={[styles.helperText, { textAlign: 'center', marginTop: theme.spacing.sm }]}>
             This will delete all playlists and settings
           </Text>
         </View>
@@ -198,145 +200,3 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#000' },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#27272a',
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerTitle: { color: '#fff', fontSize: 18, marginLeft: 12 },
-
-  container: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-
-  section: {
-    marginBottom: 22,
-  },
-
-  sectionTitle: {
-    color: '#fff',
-    fontSize: 16,
-    marginBottom: 8,
-  },
-
-  modeList: {
-    flexDirection: 'column',
-    gap: 8 as any,
-  },
-
-  modeItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  modeItemActive: {
-    borderColor: '#2563eb',
-    backgroundColor: 'rgba(37,99,235,0.06)',
-  },
-  modeItemInactive: {
-    borderColor: '#27272a',
-    backgroundColor: '#0b0b0b',
-  },
-
-  modeText: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  modeLabel: {
-    color: '#fff',
-    fontSize: 15,
-  },
-  modeDesc: {
-    color: '#9ca3af',
-    fontSize: 13,
-    marginTop: 2,
-  },
-
-  rowBetween: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-
-  smallText: {
-    color: '#9ca3af',
-  },
-
-  helperText: {
-    color: '#9ca3af',
-    fontSize: 13,
-    marginTop: 6,
-  },
-
-  feedbackRow: {
-    padding: 8,
-    backgroundColor: '#0b0b0b',
-    borderRadius: 10,
-  },
-
-  actionBtn: {
-    marginTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 12,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#27272a',
-    backgroundColor: '#0b0b0b',
-    gap: 12 as any,
-  },
-  actionBtnText: {
-    color: '#fff',
-    marginLeft: 12,
-    fontSize: 15,
-  },
-
-  resetBtn: {
-    marginTop: 10,
-    backgroundColor: '#ef4444',
-    paddingVertical: 12,
-    borderRadius: 10,
-    alignItems: 'center',
-  },
-  resetBtnText: { color: '#fff', fontWeight: '600' },
-
-  /* Modal */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 520,
-    backgroundColor: '#0b0b0b',
-    borderRadius: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  modalBody: { color: '#9ca3af', fontSize: 14, marginBottom: 16 },
-
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end' },
-  modalBtn: {
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-    marginLeft: 8,
-  },
-  modalCancel: { backgroundColor: '#1f2937' },
-  modalDanger: { backgroundColor: '#ef4444' },
-  modalCancelText: { color: '#fff' },
-  modalDangerText: { color: '#fff', fontWeight: '600' },
-});

@@ -1,32 +1,59 @@
+// src/services/storage.ts (обновлённый, добавил getStorageStatus обратно)
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AppSettings, AppState, Playlist } from '../types';
+
+const LOG_KEY = 'logs';
+const MAX_LOGS = 200;
 
 export const StorageService = {
   addLog: async (message: string) => {
     try {
-      const logs = await AsyncStorage.getItem('logs');
-      const updatedLogs = logs ? `${logs}\n${message}` : message;
-      await AsyncStorage.setItem('logs', updatedLogs);
+      let logs: string[] = [];
+      const stored = await AsyncStorage.getItem(LOG_KEY);
+      if (stored) {
+        if (stored.startsWith('[')) {
+          logs = JSON.parse(stored);
+        } else {
+          // Migrate old string format to array
+          logs = stored.split('\n').filter(Boolean);
+        }
+      }
+      logs.push(`${new Date().toISOString()}: ${message}`);
+      if (logs.length > MAX_LOGS) {
+        logs = logs.slice(-MAX_LOGS);
+      }
+      await AsyncStorage.setItem(LOG_KEY, JSON.stringify(logs));
     } catch (error) {
       console.error('Storage addLog error:', error);
     }
   },
-  getLogs: async (): Promise<string> => {
+
+  getLogs: async (): Promise<string[]> => {
     try {
-      const logs = await AsyncStorage.getItem('logs');
-      return logs || '';
+      const stored = await AsyncStorage.getItem(LOG_KEY);
+      if (stored) {
+        if (stored.startsWith('[')) {
+          return JSON.parse(stored);
+        } else {
+          // Migrate old string format to array
+          return stored.split('\n').filter(Boolean);
+        }
+      }
+      return [];
     } catch (error) {
       console.error('Storage getLogs error:', error);
-      return '';
+      return [];
     }
   },
+
   clearLogs: async () => {
     try {
-      await AsyncStorage.removeItem('logs');
+      await AsyncStorage.removeItem(LOG_KEY);
     } catch (error) {
       console.error('Storage clearLogs error:', error);
     }
   },
+
   getSettings: async (): Promise<AppSettings> => {
     try {
       const settings = await AsyncStorage.getItem('settings');
@@ -36,6 +63,7 @@ export const StorageService = {
       return { controlMode: 'both', gestureSensitivity: 50, visualFeedback: true };
     }
   },
+
   saveSettings: async (settings: AppSettings) => {
     try {
       await AsyncStorage.setItem('settings', JSON.stringify(settings));
@@ -43,6 +71,7 @@ export const StorageService = {
       console.error('Storage saveSettings error:', error);
     }
   },
+
   getPlaylists: async (): Promise<Playlist[]> => {
     try {
       const playlists = await AsyncStorage.getItem('playlists');
@@ -52,6 +81,7 @@ export const StorageService = {
       return [];
     }
   },
+
   savePlaylists: async (playlists: Playlist[]) => {
     try {
       await AsyncStorage.setItem('playlists', JSON.stringify(playlists));
@@ -59,6 +89,7 @@ export const StorageService = {
       console.error('Storage savePlaylists error:', error);
     }
   },
+
   getCurrentState: async (): Promise<AppState | null> => {
     try {
       const state = await AsyncStorage.getItem('state');
@@ -68,6 +99,7 @@ export const StorageService = {
       return null;
     }
   },
+
   saveCurrentState: async (state: AppState) => {
     try {
       await AsyncStorage.setItem('state', JSON.stringify(state));
@@ -75,13 +107,20 @@ export const StorageService = {
       console.error('Storage saveCurrentState error:', error);
     }
   },
-  clearAll: async () => {
+
+  clearAppData: async () => {
     try {
-      await AsyncStorage.clear();
+      await Promise.all([
+        AsyncStorage.removeItem('logs'),
+        AsyncStorage.removeItem('settings'),
+        AsyncStorage.removeItem('playlists'),
+        AsyncStorage.removeItem('state'),
+      ]);
     } catch (error) {
-      console.error('Storage clearAll error:', error);
+      console.error('Storage clearAppData error:', error);
     }
   },
+
   getStorageStatus: async (key: string): Promise<boolean> => {
     try {
       const value = await AsyncStorage.getItem(key);

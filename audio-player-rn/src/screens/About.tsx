@@ -1,3 +1,4 @@
+// screens/About.tsx
 import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -5,7 +6,7 @@ import { ControlButton } from '../components/ControlButton';
 import { StorageService } from '../services/storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types'; 
-
+import { aboutStyles as styles } from '../styles/globalStyles';
 
 type AboutProps = NativeStackScreenProps<RootStackParamList, 'About'>;
 
@@ -20,7 +21,7 @@ export function About({ navigation }: AboutProps) {
   useEffect(() => {
     const fetchData = async () => {
       const storedLogs = await StorageService.getLogs();
-      setLogs(storedLogs.split('\n').filter(Boolean));
+      setLogs(storedLogs); // Теперь array, без split
 
       const [playlists, settings, state] = await Promise.all([
         StorageService.getStorageStatus('playlists'),
@@ -40,7 +41,7 @@ export function About({ navigation }: AboutProps) {
   const appInfo = {
     name: 'Audio Player',
     version: '1.0.0',
-    buildDate: 'October 2025',
+    buildDate: 'November 2025', // Обновил на текущую дату
   };
 
   const libraries = [
@@ -188,155 +189,3 @@ export function About({ navigation }: AboutProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-  },
-  headerTitle: {
-    fontSize: 20,
-    color: '#fff',
-    marginLeft: 12,
-  },
-  contentContainer: {
-    padding: 24,
-  },
-  section: {
-    backgroundColor: '#18181b',
-    borderRadius: 8,
-    padding: 16,
-    marginBottom: 16,
-  },
-  appInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  appIcon: {
-    width: 64,
-    height: 64,
-    backgroundColor: '#3b82f6',
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 8,
-  },
-  sectionTextContainer: {
-    marginTop: 8,
-  },
-  sectionText: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-  list: {
-    marginTop: 8,
-  },
-  listItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  listBullet: {
-    fontSize: 14,
-    color: '#3b82f6',
-    marginRight: 8,
-  },
-  listText: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  gridItem: {
-    backgroundColor: '#27272a',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 4,
-  },
-  gridText: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  clearButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  clearButtonText: {
-    fontSize: 14,
-    color: '#d1d5db',
-    marginLeft: 4,
-  },
-  logContainer: {
-    height: 256,
-    borderWidth: 1,
-    borderColor: '#27272a',
-    borderRadius: 4,
-    padding: 16,
-  },
-  noLogsText: {
-    fontSize: 12,
-    color: '#6b7280',
-    textAlign: 'center',
-    paddingVertical: 32,
-  },
-  logText: {
-    fontSize: 12,
-    color: '#d1d5db',
-    fontFamily: 'monospace',
-    marginBottom: 4,
-  },
-  storageInfo: {
-    marginTop: 8,
-  },
-  storageRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  storageLabel: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-  storageValue: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-  privacySection: {
-    backgroundColor: '#1e40af10',
-    borderWidth: 1,
-    borderColor: '#1e40af80',
-    borderRadius: 8,
-    padding: 16,
-  },
-  privacyTitle: {
-    fontSize: 18,
-    color: '#60a5fa',
-    marginBottom: 8,
-  },
-  privacyText: {
-    fontSize: 14,
-    color: '#d1d5db',
-  },
-});

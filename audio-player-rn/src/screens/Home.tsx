@@ -5,9 +5,8 @@ import {
   Text,
   TouchableOpacity,
   Image,
-  StyleSheet,
-  ViewStyle,
   StyleProp,
+  ViewStyle,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -17,6 +16,7 @@ import { ControlButton } from '../components/ControlButton';
 import { ProgressBar } from '../components/ProgressBar';
 import { ModeIndicator } from '../components/ModeIndicator';
 import { GestureOverlay } from '../components/GestureOverlay';
+import { homeStyles as styles } from '../styles/globalStyles';
 
 type HomeProps = {
   currentTrack: Track | null;
@@ -60,7 +60,10 @@ export function Home({
         'double-tap': 'Play/Pause',
         'long-press': 'Long press detected',
       };
-      Toast.show({ type: 'info', text1: messages[gesture.type] || 'Gesture detected' });
+      Toast.show({
+        type: 'info',
+        text1: messages[gesture.type] || 'Gesture detected',
+      });
     }
 
     switch (gesture.type) {
@@ -77,7 +80,6 @@ export function Home({
   };
 
   const handleCoverPress = () => {
-    // навигация — имена экрана берём из RootStackParamList
     onNavigate('NowPlaying');
   };
 
@@ -132,11 +134,7 @@ export function Home({
 
           {/* ProgressBar */}
           <View style={styles.progress}>
-            <ProgressBar
-              current={position}
-              total={duration}
-              onSeek={onSeek}
-            />
+            <ProgressBar current={position} total={duration} onSeek={onSeek} />
           </View>
 
           {/* Controls */}
@@ -169,7 +167,7 @@ export function Home({
               style={styles.actionBtn}
               onPress={() => onNavigate('Playlist')}
             >
-              <Ionicons name="list-outline" size={20} />
+              <Ionicons name="list-outline" size={20} color="#fff" />
               <Text style={styles.actionText}>Playlist</Text>
             </TouchableOpacity>
           </View>
@@ -185,49 +183,3 @@ export function Home({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000', paddingTop: 24 },
-  gestureOverlay: { flex: 1 },
-  header: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#27272a',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  title: { color: '#fff', fontSize: 18 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 20 },
-  cover: {
-    width: 260,
-    height: 260,
-    borderRadius: 16,
-    backgroundColor: '#0b0b0b',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    marginBottom: 18,
-  },
-  artwork: { width: '100%', height: '100%', resizeMode: 'cover' },
-  trackInfo: { alignItems: 'center', marginBottom: 12 },
-  trackTitle: { color: '#fff', fontSize: 20, marginBottom: 4 },
-  trackArtist: { color: '#9ca3af', fontSize: 14 },
-  progress: { width: '90%', marginVertical: 10 },
-  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 18, marginVertical: 8 },
-  quickActions: { flexDirection: 'row', marginTop: 8 },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#111',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 10,
-    gap: 8,
-  },
-  actionText: { color: '#fff', marginLeft: 8 },
-  hint: { padding: 12, alignItems: 'center' },
-  hintText: { color: '#9ca3af', fontSize: 12 },
-});

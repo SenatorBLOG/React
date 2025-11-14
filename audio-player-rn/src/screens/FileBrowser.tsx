@@ -1,52 +1,65 @@
+// screens/FileBrowser.tsx
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { ControlButton } from '../components/ControlButton';
 import * as DocumentPicker from 'expo-document-picker';
+import { Audio } from 'expo-av';
 
 import { Track } from '../types';
 import { createTestTracks } from '../utils/test-tracks';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../types';
+import { fileBrowserStyles as styles } from '../styles/globalStyles';
 
-// helpers to extract navigation/route types
-type NavigationProp = NativeStackScreenProps<RootStackParamList, 'FileBrowser'>['navigation'];
-type RouteProp = NativeStackScreenProps<RootStackParamList, 'FileBrowser'>['route'];
-
-type FileBrowserProps = {
-  navigation: NavigationProp;
-  route: RouteProp;
+type FileBrowserProps = NativeStackScreenProps<RootStackParamList, 'FileBrowser'> & {
   onAddTracks: (tracks: Track[]) => void;
   onNavigate: (screen: keyof RootStackParamList) => void;
 };
 
-// Expo DocumentPicker result type
-type PickedFile = {
-  uri: string;
-  name?: string;
-  size?: number;
-  mimeType?: string;
+type PickedFile = DocumentPicker.DocumentPickerAsset; // Используй built-in type из expo
+
+const getTrackMetadata = async (uri: string): Promise<{ duration: number; title?: string; artist?: string }> => {
+  const sound = new Audio.Sound();
+  try {
+    await sound.loadAsync({ uri });
+    const status = await sound.getStatusAsync();
+    if (status.isLoaded) {
+      return {
+        duration: (status.durationMillis || 0) / 1000,
+        title: undefined, // expo-av не даёт tags, только duration
+        artist: undefined,
+      };
+    }
+    return { duration: 0 };
+  } catch (error) {
+    console.error('Metadata error:', error);
+    return { duration: 0 };
+  } finally {
+    await sound.unloadAsync();
+  }
 };
 
-export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: FileBrowserProps) {
+export function FileBrowser({ navigation, onAddTracks }: FileBrowserProps) {
   const [selectedFiles, setSelectedFiles] = useState<PickedFile[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const handleFileSelect = async () => {
-  try {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: 'audio/*',
-      multiple: true, // : multiple=true  SDK >= 48
-    });
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: 'audio/*',
+        multiple: true,
+      });
 
-    if (!result.canceled) {
-      console.log(result.assets[0]); // { name, uri, size }
-      setSelectedFiles(result.assets); // handle multiple files
+      if (!result.canceled) {
+        // Filter only audio
+        const audioFiles = result.assets.filter((asset) => asset.mimeType?.startsWith('audio/'));
+        setSelectedFiles(audioFiles);
+      }
+    } catch (error) {
+      console.error('File picker error:', error);
     }
-  } catch (error) {
-    console.error('File picker error:', error);
-  }
-};
+  };
 
   const handleAddSelected = async () => {
     if (selectedFiles.length === 0) return;
@@ -55,12 +68,14 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
     const tracks: Track[] = [];
 
     for (const file of selectedFiles) {
+      const metadata = await getTrackMetadata(file.uri);
       const track: Track = {
-        id: `file-${Date.now()}-${Math.random()}`,
+        id: `file-${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title: file.name?.replace(/\.[^/.]+$/, '') || 'Unknown Track',
         artist: 'Unknown Artist',
-        duration: 0, // Note: Duration requires expo-av to fetch metadata
+        duration: metadata.duration,
         uri: file.uri,
+        artworkUri: undefined, // Если есть, можно добавить
       };
       tracks.push(track);
     }
@@ -79,7 +94,6 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <ControlButton
           icon="arrow-back"
@@ -89,9 +103,7 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
         <Text style={styles.headerTitle}>Import Audio Files</Text>
       </View>
 
-      {/* Content */}
       <View style={styles.content}>
-        {/* File Upload */}
         <View style={styles.uploadSection}>
           <View style={styles.uploadContent}>
             <Ionicons name="cloud-upload-outline" size={48} color="#6b7280" style={styles.uploadIcon} />
@@ -106,13 +118,12 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
           </View>
         </View>
 
-        {/* Selected Files */}
         {selectedFiles.length > 0 && (
           <View style={styles.selectedFilesSection}>
             <Text style={styles.sectionTitle}>Selected Files ({selectedFiles.length})</Text>
             <FlatList
               data={selectedFiles}
-              renderItem={({ item, index }) => (
+              renderItem={({ item }) => (
                 <View style={styles.fileItem}>
                   <Ionicons name="checkmark-circle-outline" size={20} color="#22c55e" />
                   <View style={styles.fileInfo}>
@@ -125,7 +136,7 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
                   </View>
                 </View>
               )}
-              keyExtractor={(_, index) => index.toString()}
+              keyExtractor={(item) => item.uri}
               style={styles.fileList}
             />
             <TouchableOpacity
@@ -133,14 +144,15 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
               onPress={handleAddSelected}
               disabled={isProcessing}
             >
-              <Text style={styles.addButtonText}>
-                {isProcessing ? 'Processing...' : 'Add to Playlist'}
-              </Text>
+              {isProcessing ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={styles.addButtonText}>Add to Playlist</Text>
+              )}
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Test Tracks */}
         <View style={styles.testTracksSection}>
           <View style={styles.testTracksContent}>
             <Ionicons name="musical-notes-outline" size={24} color="#3b82f6" style={styles.testTracksIcon} />
@@ -156,7 +168,6 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
           </View>
         </View>
 
-        {/* Info */}
         <View style={styles.infoSection}>
           <Text style={styles.infoText}>Supported formats: MP3, WAV, OGG, M4A</Text>
           <Text style={styles.infoText}>Files are stored locally on your device</Text>
@@ -165,153 +176,3 @@ export function FileBrowser({ navigation, route, onAddTracks, onNavigate }: File
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#000',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#27272a',
-  },
-  headerTitle: {
-    fontSize: 20,
-    color: '#fff',
-    marginLeft: 12,
-  },
-  content: {
-    flex: 1,
-    padding: 24,
-    gap: 24,
-  },
-  uploadSection: {
-    backgroundColor: '#18181b',
-    borderWidth: 2,
-    borderStyle: 'dashed',
-    borderColor: '#3f3f46',
-    borderRadius: 8,
-    padding: 32,
-  },
-  uploadContent: {
-    alignItems: 'center',
-  },
-  uploadIcon: {
-    marginBottom: 16,
-  },
-  uploadTitle: {
-    fontSize: 20,
-    color: '#fff',
-    marginBottom: 8,
-  },
-  uploadSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  uploadButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#3b82f6',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  uploadButtonText: {
-    fontSize: 16,
-    color: '#fff',
-    marginLeft: 8,
-  },
-  selectedFilesSection: {
-    backgroundColor: '#18181b',
-    borderRadius: 8,
-    padding: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    color: '#fff',
-    marginBottom: 16,
-  },
-  fileList: {
-    maxHeight: 256,
-    marginBottom: 16,
-  },
-  fileItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#27272a',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 8,
-  },
-  fileInfo: {
-    flex: 1,
-    marginLeft: 12,
-  },
-  fileName: {
-    fontSize: 14,
-    color: '#fff',
-  },
-  fileSize: {
-    fontSize: 12,
-    color: '#6b7280',
-  },
-  addButton: {
-    backgroundColor: '#3b82f6',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  addButtonDisabled: {
-    backgroundColor: '#6b7280',
-  },
-  addButtonText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  testTracksSection: {
-    backgroundColor: '#18181b',
-    borderRadius: 8,
-    padding: 16,
-  },
-  testTracksContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-  },
-  testTracksIcon: {
-    marginTop: 4,
-    marginRight: 16,
-  },
-  testTracksInfo: {
-    flex: 1,
-  },
-  testTracksSubtitle: {
-    fontSize: 14,
-    color: '#6b7280',
-    marginBottom: 16,
-  },
-  testTracksButton: {
-    borderWidth: 1,
-    borderColor: '#3f3f46',
-    padding: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  testTracksButtonText: {
-    fontSize: 16,
-    color: '#fff',
-  },
-  infoSection: {
-    padding: 16,
-    alignItems: 'center',
-  },
-  infoText: {
-    fontSize: 12,
-    color: '#6b7280',
-    marginBottom: 4,
-  },
-});

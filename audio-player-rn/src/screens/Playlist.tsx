@@ -4,7 +4,6 @@ import {
   SafeAreaView,
   View,
   Text,
-  StyleSheet,
   FlatList,
   TouchableOpacity,
   Modal,
@@ -14,6 +13,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { Track, RootStackParamList } from '../types';
 import { TrackListItem } from '../components/TrackListItem';
 import { ControlButton } from '../components/ControlButton';
+
+// Import styles
+import { playlistStyles as styles } from '../styles/globalStyles';
 
 type PlaylistProps = {
   tracks: Track[];
@@ -135,76 +137,3 @@ export function Playlist({
     </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: '#000' },
-  header: {
-    width: '100%',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#27272a',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  title: { color: '#fff', fontSize: 18, marginLeft: 12 },
-
-  empty: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 24,
-  },
-  emptyTitle: { color: '#fff', fontSize: 20, marginTop: 12 },
-  emptySubtitle: { color: '#9ca3af', fontSize: 14, marginTop: 6, textAlign: 'center' },
-  addButton: {
-    marginTop: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#2563eb',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  addButtonText: { color: '#fff', marginLeft: 8, fontSize: 14 },
-
-  listContent: {
-    padding: 12,
-    paddingBottom: 24,
-  },
-
-  /* Modal styles */
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalCard: {
-    width: '100%',
-    maxWidth: 520,
-    backgroundColor: '#0b0b0b',
-    borderRadius: 12,
-    padding: 18,
-    borderWidth: 1,
-    borderColor: '#27272a',
-  },
-  modalTitle: { color: '#fff', fontSize: 18, fontWeight: '600', marginBottom: 8 },
-  modalBody: { color: '#9ca3af', fontSize: 14, marginBottom: 16 },
-
-  modalActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: 12 as any },
-  modalBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  cancelBtn: { backgroundColor: '#1f2937', marginRight: 8 },
-  deleteBtn: { backgroundColor: '#ef4444' },
-  cancelText: { color: '#fff' },
-  deleteText: { color: '#fff', fontWeight: '600' },
-});
