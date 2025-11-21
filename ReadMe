@@ -1,0 +1,5 @@
+#Start command
+
+npx create-expo-app music4280 --template blank  
+
+npx expo start --tunnel
