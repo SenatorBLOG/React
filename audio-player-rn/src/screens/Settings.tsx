@@ -189,7 +189,6 @@ export function Settings({ settings, onUpdateSettings, onResetData, onNavigate }
               <Pressable style={[styles.modalBtn, styles.modalCancel]} onPress={() => setShowResetDialog(false)}>
                 <Text style={styles.modalCancelText}>Cancel</Text>
               </Pressable>
-
               <Pressable style={[styles.modalBtn, styles.modalDanger]} onPress={confirmReset}>
                 <Text style={styles.modalDangerText}>Reset Everything</Text>
               </Pressable>

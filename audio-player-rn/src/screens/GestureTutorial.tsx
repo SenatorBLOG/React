@@ -126,9 +126,11 @@ export function GestureTutorial({ navigation }: Props) {
             </Text>
           </View>
         )}
-        <Ionicons name="hand-left-outline" size={64} color="#9ca3af" />
-        <Text style={styles.practiceText}>Practice here</Text>
-        {attempts > 0 && <Text style={styles.attemptsText}>Attempts: {attempts}</Text>}
+        <View style={{ alignItems: 'center' }}>
+          <Ionicons name="hand-left-outline" size={64} color="#9ca3af" />
+          <Text style={styles.practiceText}>Practice here</Text>
+          {attempts > 0 && <Text style={styles.attemptsText}>Attempts: {attempts}</Text>}
+        </View>
       </GestureWrapper>
 
       {/* Actions */}

@@ -94,7 +94,7 @@ export function NowPlaying({
             label="Back"
           />
           <Text style={styles.headerTitle}>Now Playing</Text>
-          <View style={{ width: 40 }} /> {/* spacer */}
+          <View style={{ width: 40 }} />
         </View>
 
         {/* Content */}

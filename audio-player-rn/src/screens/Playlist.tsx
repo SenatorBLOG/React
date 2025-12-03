@@ -125,10 +125,11 @@ export function Playlist({
               <Pressable style={[styles.modalBtn, styles.cancelBtn]} onPress={cancelDelete}>
                 <Text style={styles.cancelText}>Cancel</Text>
               </Pressable>
-
               <Pressable style={[styles.modalBtn, styles.deleteBtn]} onPress={confirmDelete}>
-                <Ionicons name="trash-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
-                <Text style={styles.deleteText}>Delete</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Ionicons name="trash-outline" size={16} color="#fff" style={{ marginRight: 8 }} />
+                  <Text style={styles.deleteText}>Delete</Text>
+                </View>
               </Pressable>
             </View>
           </View>

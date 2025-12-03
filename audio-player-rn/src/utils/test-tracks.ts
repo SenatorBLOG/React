@@ -9,13 +9,14 @@ export function generateTestAudio(frequency: number, duration: number): string {
   const data = buffer.getChannelData(0);
 
   for (let i = 0; i < numSamples; i++) {
-    data[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate) * 0.3;
+    data[i] = Math.sin(2 * Math.PI * frequency * i / sampleRate);
   }
 
   // Convert to WAV
   const wav = encodeWAV(buffer);
   const blob = new Blob([wav], { type: 'audio/wav' });
-  return URL.createObjectURL(blob);
+  const url = URL.createObjectURL(blob);
+  return url;
 }
 
 function encodeWAV(buffer: AudioBuffer): ArrayBuffer {
@@ -23,7 +24,6 @@ function encodeWAV(buffer: AudioBuffer): ArrayBuffer {
   const sampleRate = buffer.sampleRate;
   const format = 1; // PCM
   const bitDepth = 16;
-
   const bytesPerSample = bitDepth / 8;
   const blockAlign = numChannels * bytesPerSample;
 
@@ -34,25 +34,30 @@ function encodeWAV(buffer: AudioBuffer): ArrayBuffer {
   const arrayBuffer = new ArrayBuffer(bufferLength);
   const view = new DataView(arrayBuffer);
 
-  // WAV header
+  // WAV header - RIFF chunk
   writeString(view, 0, 'RIFF');
-  view.setUint32(4, 36 + dataLength, true);
+  view.setUint32(4, bufferLength - 8, true); // File size - 8
   writeString(view, 8, 'WAVE');
+
+  // fmt subchunk
   writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true);
-  view.setUint16(20, format, true);
-  view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
-  view.setUint16(32, blockAlign, true);
-  view.setUint16(34, bitDepth, true);
+  view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
+  view.setUint16(20, format, true); // Audio format (1 = PCM)
+  view.setUint16(22, numChannels, true); // Number of channels
+  view.setUint32(24, sampleRate, true); // Sample rate
+  view.setUint32(28, sampleRate * blockAlign, true); // Byte rate
+  view.setUint16(32, blockAlign, true); // Block align
+  view.setUint16(34, bitDepth, true); // Bits per sample
+
+  // data subchunk
   writeString(view, 36, 'data');
-  view.setUint32(40, dataLength, true);
+  view.setUint32(40, dataLength, true); // Subchunk2Size (data size)
 
   // Write PCM samples
   let offset = 44;
+  const volume = 0.3;
   for (let i = 0; i < data.length; i++) {
-    const sample = Math.max(-1, Math.min(1, data[i]));
+    const sample = Math.max(-1, Math.min(1, data[i] * volume));
     view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
     offset += 2;
   }

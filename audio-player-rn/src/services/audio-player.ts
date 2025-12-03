@@ -55,18 +55,21 @@ class AudioPlayer {
         this.isLoaded = false;
       }
 
+      console.log('Loading track:', track.title, 'URI:', track.uri);
+
       const { sound } = await Audio.Sound.createAsync(
         { uri: track.uri },
-        { shouldPlay: false },
+        { shouldPlay: false, progressUpdateIntervalMillis: 100 },
         this.onPlaybackStatusUpdate
       );
 
       this.sound = sound;
       this.isLoaded = true;
+      console.log('Track loaded successfully:', track.title);
     } catch (error: any) {
       this.isLoaded = false;
       console.error('Error loading track:', error);
-      this.notifyError(error);
+      this.notifyError(new Error(`Failed to load track: ${error.message}`));
       throw error;
     }
   }
